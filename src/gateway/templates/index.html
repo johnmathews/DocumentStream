@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DocumentStream</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont,
+                'Segoe UI', sans-serif;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        h1 { color: #1a1a2e; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 16px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 2px solid #dee2e6;
+            color: #495057;
+            font-size: 0.85em;
+        }
+        td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 0.9em;
+        }
+        .stats { display: flex; gap: 24px; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #1a1a2e;
+        }
+        .stat-label { color: #6c757d; font-size: 0.9em; }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover { background: #0052a3; }
+        .actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        input[type=number] {
+            width: 60px;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        .badge-public { background: #28a745; }
+        .badge-confidential { background: #ffc107; color: #333; }
+        .badge-secret { background: #dc3545; }
+        .badge-high { background: #dc3545; }
+        .badge-medium { background: #fd7e14; }
+        .badge-low { background: #ffc107; color: #333; }
+        .badge-none { background: #6c757d; }
+        .tag {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            margin: 1px;
+        }
+        .section-label {
+            color: #6c757d;
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        th.separator {
+            border-left: 2px solid #dee2e6;
+        }
+        td.separator {
+            border-left: 2px solid #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>DocumentStream</h1>
+    <p>Commercial Real Estate Loan Document Processing Pipeline</p>
+
+    <div class="card">
+        <h2>Pipeline Statistics</h2>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Documents</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{{ stats.loans or '-' }}</div>
+                <div class="stat-label">Loans</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{{ stats.public }}</div>
+                <div class="stat-label">Public</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{{ stats.confidential }}</div>
+                <div class="stat-label">Confidential</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{{ stats.secret }}</div>
+                <div class="stat-label">Secret</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{{ stats.env_high }}</div>
+                <div class="stat-label">Env: High</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Generate Test Data</h2>
+        <div class="actions">
+            <label>Loan scenarios:
+                <input type="number" id="count" value="5"
+                    min="1" max="200">
+            </label>
+            <button onclick="generate()">Generate</button>
+            <span id="status"></span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Processed Documents</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Words</th>
+                    <th class="separator">
+                        <span class="section-label">Rules</span><br>
+                        Privacy
+                    </th>
+                    <th>
+                        <span class="section-label">Semantic</span><br>
+                        Privacy
+                    </th>
+                    <th>
+                        <span class="section-label">Semantic</span><br>
+                        Env Impact
+                    </th>
+                    <th>
+                        <span class="section-label">Semantic</span><br>
+                        Industries
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+            {% if documents %}
+                {% for doc in documents %}
+                <tr>
+                    <td><code>{{ doc.filename }}</code></td>
+                    <td>{{ doc.word_count }}</td>
+                    <td class="separator">
+                        <span class="badge badge-{{ doc.classification|lower }}">
+                            {{ doc.classification }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if doc.semantic_privacy %}
+                        <span class="badge badge-{{ doc.semantic_privacy|lower }}">
+                            {{ doc.semantic_privacy }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if doc.environmental_impact %}
+                        <span class="badge badge-{{ doc.environmental_impact|lower }}">
+                            {{ doc.environmental_impact }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if doc.industries %}
+                            {% for ind in doc.industries %}
+                            <span class="tag">{{ ind }}</span>
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6"
+                        style="color:#6c757d;text-align:center">
+                        No documents yet. Generate some test data above.
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+    async function generate() {
+        const count = document.getElementById('count').value;
+        const status = document.getElementById('status');
+        status.textContent = 'Generating...';
+        try {
+            const resp = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({count: parseInt(count)})
+            });
+            const data = await resp.json();
+            status.textContent =
+                `Created ${data.documents_created} documents`;
+            setTimeout(() => location.reload(), 500);
+        } catch(e) {
+            status.textContent = 'Error: ' + e.message;
+        }
+    }
+    </script>
+</body>
+</html>

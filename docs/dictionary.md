@@ -1,0 +1,270 @@
+# DocumentStream Dictionary
+
+Terms and concepts used in this project, explained for someone coming from Docker Compose and web app backgrounds.
+
+---
+
+## Kubernetes (K8s) Core Concepts
+
+### Pod
+The smallest thing K8s runs. Like a Docker container, but it can hold 1+ containers that share
+networking and storage. In practice, most pods have exactly one container. Think of it as:
+**Docker Compose service instance = K8s pod**.
+
+### Deployment
+Tells K8s "I want N copies of this pod running at all times." If a pod dies, the Deployment
+creates a replacement. Like `deploy.replicas` in Docker Compose, but with self-healing built in.
+
+### Service
+A stable network address that routes traffic to pods. Pods come and go (scaling, crashes, updates),
+but the Service address stays the same. Like Docker Compose service names (e.g., `redis:6379`),
+but more explicit.
+
+### Namespace
+A way to group related resources. Like folders for your K8s objects. We use:
+- `documentstream` — our application
+- `monitoring` — Prometheus + Grafana
+- `chaos-mesh` — chaos engineering tools
+- `keda` — autoscaler
+
+### Ingress
+An HTTP router that sits in front of your services. Maps external URLs to internal services.
+Like an nginx reverse proxy, but managed by K8s. Example: `/api/*` → gateway service,
+`/grafana/*` → Grafana service.
+
+### ConfigMap
+Key-value config that gets injected into pods as environment variables or files. Like an `.env`
+file, but managed by K8s and versioned.
+
+### Secret
+Same as ConfigMap but for sensitive data (passwords, API keys). Base64-encoded at rest.
+Like Docker secrets.
+
+---
+
+## Kubernetes Operational Concepts
+
+### Liveness Probe
+A health check that K8s runs on your container. If it fails, K8s kills and restarts the pod.
+Example: `GET /health` returns 200 → alive. Returns 500 → kill it, start a new one.
+
+### Readiness Probe
+Similar to liveness, but controls whether traffic is routed to the pod. A pod can be alive
+but not ready (e.g., still loading data). K8s won't send it requests until it's ready.
+
+### Rolling Update
+How K8s deploys a new version: start new pods, wait until they're ready, then kill old pods.
+At no point are zero pods running. This gives you **zero-downtime deployments**. If the new
+pods fail their readiness probes, K8s stops the rollout automatically.
+
+### Rollback
+Undo a deployment: `kubectl rollout undo deployment/my-app`. K8s keeps the previous pod
+spec and can revert to it instantly.
+
+### Resource Requests and Limits
+- **Request:** "This container needs at least 256MB RAM and 0.25 CPU to run."
+  K8s uses this to decide which node to place the pod on.
+- **Limit:** "This container must never use more than 512MB RAM."
+  If it exceeds the memory limit, K8s kills it (OOMKilled).
+
+### Horizontal Pod Autoscaler (HPA)
+Watches a metric (CPU, memory, custom) and adjusts the number of pod replicas. Example:
+"If average CPU > 70%, add more pods. If < 30%, remove pods." Like auto-scaling in cloud
+VMs, but for containers and much faster (seconds, not minutes).
+
+---
+
+## Tools & Platforms
+
+### KEDA (Kubernetes Event-Driven Autoscaling)
+An extension to K8s that adds smarter autoscaling beyond just CPU/memory. While the built-in
+HPA can only scale on CPU and memory, KEDA can scale based on **any event source**:
+
+- **Redis queue depth** — "There are 50 documents waiting in the queue, scale up to 10 workers"
+- **Kafka consumer lag** — "Messages are piling up, add more consumers"
+- **Cron schedules** — "Scale to 5 pods every weekday at 9am"
+- **HTTP request rate** — "Traffic is spiking, add more API pods"
+
+**Why we use it:** Our pipeline uses Redis queues between stages. When documents pile up in
+a queue, KEDA automatically adds more worker pods to process them faster. When the queue
+empties, it scales back down to 1 (or even 0) pods. This is the core demo — you can *see*
+pods appear and disappear in response to workload.
+
+**How it works:**
+1. You install KEDA in your cluster (one Helm chart)
+2. You create a `ScaledObject` YAML that says: "Watch this Redis list. If it has more than
+   5 items per worker, add more workers. Maximum 10 workers."
+3. KEDA checks the queue every 30 seconds and adjusts the pod count
+
+**Docker Compose equivalent:** There isn't one. Docker Compose has no autoscaling. This is
+one of the key reasons to use K8s over Compose in production.
+
+### Chaos Mesh
+A tool that intentionally breaks things in your K8s cluster so you can prove the system
+recovers. You define "experiments" like:
+
+- "Kill 2 random pods from the classify-worker deployment"
+- "Add 500ms network latency to the database connection"
+- "Consume 90% of CPU on one node"
+
+It has a web dashboard where you can start/stop experiments during a live demo.
+The point is to show that K8s **self-heals** — when pods die, they come back automatically.
+
+### Helm
+A package manager for K8s. Like `apt install` or `brew install`, but for K8s applications.
+Instead of writing 15 YAML files to install Prometheus + Grafana, you run:
+`helm install monitoring prometheus-community/kube-prometheus-stack`
+Helm charts are configurable via a `values.yaml` file.
+
+### Kustomize
+A tool for managing K8s YAML without templates. You write a "base" set of manifests, then
+create "overlays" that patch specific values for different environments (dev, staging, prod).
+Built into kubectl: `kubectl apply -k ./k8s/base/`.
+
+### Prometheus
+A monitoring system that scrapes metrics from your applications and stores them as time series.
+Your FastAPI app exposes metrics at `/metrics` (request count, latency, error rate). Prometheus
+collects them every 15 seconds. Grafana reads from Prometheus to draw dashboards.
+
+### Grafana
+A dashboarding tool. Connects to Prometheus (and other data sources) and draws real-time
+graphs. We use it to show: pod count, CPU/memory, request rate, queue depth, error rate.
+The live updating graphs are the centerpiece of the demo.
+
+### Locust
+A Python load testing tool with a web UI. You write test scenarios in Python (e.g., "upload
+a random document every 0.5 seconds"), then control the number of simulated users via
+sliders in the browser. We use it to generate traffic and show KEDA scaling in action.
+
+---
+
+## Azure Services
+
+### AKS (Azure Kubernetes Service)
+Managed K8s on Azure. Azure handles the control plane (the K8s "brain"). You just pay for
+the worker nodes (VMs that run your pods). Free tier available for the control plane.
+
+### ACR (Azure Container Registry)
+Where your Docker images live. Like Docker Hub, but private and integrated with AKS.
+When you push a new image, AKS can pull it automatically.
+
+### Azure Database for PostgreSQL — Flexible Server
+Managed PostgreSQL. Azure handles backups, patching, high availability. Can be stopped when
+not in use (you only pay for disk storage while stopped).
+
+### Azure Blob Storage
+Object storage for files (like S3). We store the original PDF files here. Extremely cheap.
+
+---
+
+## Pipeline Concepts
+
+### Queue-Based Processing
+Instead of processing documents synchronously (upload → wait → response), we put them on a
+queue and return immediately. Worker pods pick items off the queue and process them
+independently. Benefits:
+- **Resilience:** If a worker crashes, the message stays in the queue and another worker picks it up
+- **Scaling:** Add more workers when the queue is long, remove them when it's short
+- **Decoupling:** Each stage can be updated/scaled/failed independently
+
+### Redis as a Queue
+Redis is best known as a key-value store, but it has several built-in data structures.
+Two of them can work as message queues:
+
+**Redis Lists (simple queue):** `LPUSH` adds to one end, `RPOP` takes from the other.
+Problem: once you pop a message, it's gone. If your worker crashes mid-processing,
+the message is lost forever.
+
+**Redis Streams (what we use):** An append-only log where each message has an ID and
+key-value fields. The critical feature is **consumer groups** — multiple workers read
+from the same stream, Redis tracks which messages each worker received, and workers
+must explicitly acknowledge (`XACK`) a message when done. If a worker crashes before
+acknowledging, the message stays unacknowledged and another worker can claim it.
+
+| | Queue (List) | Stream |
+|---|---|---|
+| Message persistence | Gone after pop | Stays in the log |
+| Crash recovery | Message lost | Unacked message re-delivered |
+| Multiple consumers | One message → one consumer | Consumer groups divide work |
+| History | None | Can replay old messages |
+
+**Why this matters for the demo:** When Chaos Mesh kills a classify worker pod mid-processing,
+the message stays unacknowledged in Redis. K8s restarts the pod, it picks up the unfinished
+message, and the document gets processed. Zero data loss. That's a key interview talking point.
+
+### Streams vs Pub/Sub
+Redis also has Pub/Sub — a broadcast system where publishers send messages to channels and
+all current subscribers receive them. The critical difference:
+
+- **Pub/Sub:** Fire and forget. If nobody is subscribed, the message is gone forever. No
+  storage, no history, no acknowledgment. Like a radio broadcast — miss it and it's gone.
+- **Streams:** Durable log. Messages persist whether or not anyone is reading. Consumers
+  track their position, acknowledge processed messages, and can replay from any point.
+  Like an email inbox — messages wait for you.
+
+For a processing pipeline, Pub/Sub would lose documents whenever a worker pod restarts.
+Streams guarantee every document gets processed.
+
+---
+
+## Semantic Classification Concepts
+
+### Vector Embedding
+A way to convert text into a list of numbers (a vector) that captures its meaning. Two pieces
+of text about similar topics will have similar vectors, even if they use completely different
+words. For example, "the site was a textile dyeing factory" and "ground contamination from
+industrial chemical processing" would have similar embeddings because they're about the same
+concept — industrial pollution.
+
+We use the `all-MiniLM-L6-v2` model (sentence-transformers) which produces 384-dimensional
+vectors. "384-dimensional" means each text becomes a list of 384 numbers.
+
+### Cosine Similarity
+A way to measure how similar two vectors are. Returns a value between -1 and 1:
+- 1.0 = identical meaning
+- 0.5+ = related topics
+- ~0 = unrelated
+- Negative = opposite meaning
+
+We compare each document's embedding to pre-computed "anchor" embeddings that describe each
+classification category. The category with the highest similarity wins.
+
+### Zero-Shot Classification
+Classifying text into categories without training on labeled examples. Instead of showing the
+model 1,000 labeled documents and training a classifier, we:
+1. Write a descriptive paragraph for each category (the "anchor")
+2. Embed both the anchor and the document
+3. Compare similarity
+
+This works immediately with no training data — hence "zero-shot." The trade-off: less accurate
+than a trained classifier, but deployable in minutes instead of days.
+
+### pgvector
+A PostgreSQL extension that adds a `vector` column type and similarity search operations.
+You store embeddings alongside regular data (loan_id, classification, dates) in the same
+database. Then you can run queries like:
+
+```sql
+SELECT * FROM documents
+ORDER BY embedding <=> query_embedding
+LIMIT 10;
+```
+
+The `<=>` operator computes cosine distance. This finds the 10 documents most semantically
+similar to your query — even if they share no keywords.
+
+### Azure AI Search (interview talking point)
+Microsoft's managed search service with built-in vector search. In production at a bank,
+you'd likely use this instead of pgvector because it adds:
+- Hybrid search (vector + keyword in one query)
+- Integrated embedding via Azure OpenAI
+- Semantic re-ranking with a cross-encoder model
+- Enterprise compliance (SOC 2, GDPR, data residency)
+
+The interview answer: "I used pgvector to demonstrate the fundamentals. In production, I'd
+recommend Azure AI Search because it meets regulatory requirements and integrates with
+Azure OpenAI for embedding generation."
+
+---
+
+*This dictionary will be updated as new concepts are introduced during development.*
