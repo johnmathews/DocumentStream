@@ -71,6 +71,22 @@ full observability.
 
 ## Pipeline Flow
 
+### Current (local dev — synchronous)
+
+```
+Upload PDF ──▶ Gateway (FastAPI)
+                   │
+                   ├── Extract (PyMuPDF)
+                   ├── Rule-based classify
+                   ├── Semantic classify
+                   └── Return results (in-memory)
+```
+
+Currently all processing happens synchronously in the gateway process.
+Results are stored in-memory (no persistence).
+
+### Target (K8s — async, queue-based)
+
 ```
 Upload PDF
     │
@@ -100,7 +116,7 @@ Redis:raw-docs ──▶ Extract Workers (PyMuPDF)
                                             classifications)
 ```
 
-Each pipeline stage is a separate K8s Deployment with its own KEDA ScaledObject.
+Each pipeline stage will be a separate K8s Deployment with its own KEDA ScaledObject.
 KEDA monitors the Redis stream depth for each stage and scales workers independently.
 
 ---
@@ -137,7 +153,7 @@ KEDA monitors the Redis stream depth for each stage and scales workers independe
 | Model | all-MiniLM-L6-v2 (384 dimensions, ~100ms per document) |
 | Scaling | KEDA ScaledObject watching `extracted` stream depth |
 
-### Store Workers (`src/worker/store.py`)
+### Store Workers (`src/worker/store.py`) — NOT YET IMPLEMENTED
 
 | Aspect | Detail |
 |---|---|
@@ -146,6 +162,9 @@ KEDA monitors the Redis stream depth for each stage and scales workers independe
 | Input | Redis stream `classified` |
 | Stored data | Document metadata, classification results, vector embedding (384 dims), blob URL |
 | Scaling | KEDA ScaledObject watching `classified` stream depth |
+
+*Currently, results are stored in-memory in the gateway. The store worker,
+Redis queue integration, and PostgreSQL/Blob persistence are Day 2 tasks.*
 
 ---
 
@@ -164,7 +183,7 @@ KEDA monitors the Redis stream depth for each stage and scales workers independe
 
 When stopped (`az aks stop` + `az postgres flexible-server stop`): ~€0.01/hr (disk only).
 
-### Helm Charts
+### Helm Charts (Day 2)
 
 | Chart | Namespace | Purpose |
 |---|---|---|
@@ -174,11 +193,13 @@ When stopped (`az aks stop` + `az postgres flexible-server stop`): ~€0.01/hr (
 | chaos-mesh/chaos-mesh | chaos-mesh | Chaos engineering |
 | ingress-nginx | ingress-nginx | HTTP routing |
 
+*Not yet installed — these are deployed when the AKS cluster is provisioned.*
+
 ### CI/CD
 
 GitHub Actions workflows:
-- **ci.yml** — On PR: ruff lint + pytest
-- **deploy.yml** — On push to main: build images → push to ACR → kubectl apply to AKS
+- **ci.yml** — On push to main and PRs: ruff lint, ruff format check, pytest with coverage
+- **deploy.yml** — *Not yet created.* Will build images → push to ACR → deploy to AKS
 
 ---
 

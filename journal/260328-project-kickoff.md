@@ -24,7 +24,8 @@ Data Engineer interview.
   the interview, not the document variety.
 
 - **Rule-based classifier over ML.** Weighted keyword scoring is deterministic, explainable,
-  and built in an hour. Can add a scikit-learn TF-IDF layer later if time allows.
+  and built in an hour. Semantic classification uses sentence-transformers with
+  anchor embeddings for environmental impact and industry sectors.
 
 - **pgvector for semantic search.** Three document types (valuation reports, KYC reports,
   contracts) have enough text (500-1100+ words) to warrant vector embeddings. Using
