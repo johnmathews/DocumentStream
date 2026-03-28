@@ -25,10 +25,14 @@ htmlcov/
 .coverage.*
 .pytest_cache/
 
-# Environment
+# Environment & Secrets
 .env
 .env.local
 .env.*.local
+*.key
+*.pem
+credentials.json
+*.secret
 
 # OS
 .DS_Store

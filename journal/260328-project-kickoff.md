@@ -88,6 +88,20 @@ that keyword matching would miss.
 Chose pgvector over Azure AI Search for the demo — keeps architecture simple.
 Will name-drop Azure AI Search in the interview as the production recommendation.
 
+## Rename and infrastructure
+
+- Renamed from DocVault to **DocumentStream** — better reflects the streaming
+  pipeline architecture, stronger interview hook.
+- Created GitHub repo: `johnmathews/DocumentStream` (public).
+- CI workflow (`.github/workflows/ci.yml`): lint + test on push to main.
+  Optimized with uv caching and `uvx ruff` (lint job: 10s, test job: 50s).
+- Docker build + push workflow (`.github/workflows/docker.yml`): pushes to
+  `ghcr.io/johnmathews/documentstream` on push to main.
+- Documentation audit: verified all docs against actual code, fixed
+  inaccuracies (marked current vs planned state, removed unused scikit-learn
+  dependency, corrected template descriptions).
+- 94% test coverage (51 tests).
+
 ## Open questions
 
 - Locust for load testing — deploy inside the cluster or run locally?
