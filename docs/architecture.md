@@ -242,6 +242,11 @@ LoanScenario
 | Loan agreement | Secret | High (~1100 words) | Yes |
 | Contractor invoice | Public | Low (~100 words) | No |
 
+Sample PDFs for all 5 types are committed in `demo_samples/` so the generated
+content is visible without running the generator. Regenerate with `make demo-samples`.
+Bulk generation for stress testing uses `make generate` (outputs to `generated_docs/`,
+gitignored).
+
 ---
 
 ## Key Design Decisions

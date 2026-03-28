@@ -29,6 +29,7 @@ loan documents.
 - `src/gateway/` — FastAPI API + web UI (processes documents synchronously for now)
 - `src/worker/` — Extract, classify, and semantic classification modules
 - `src/generator/` — PDF document generator (5 templates, CLI tool)
+- `demo_samples/` — One complete loan scenario (5 PDFs, committed to git for visibility)
 - `tests/` — All tests (51 tests)
 - `k8s/` — Kubernetes manifests (empty — Day 2)
 - `infra/` — Azure setup/teardown scripts (empty — Day 2)
@@ -40,7 +41,8 @@ loan documents.
 ## Commands
 - `make test` — Run tests with pytest
 - `make lint` — Run ruff linter
-- `make generate` — Generate sample documents
+- `make generate` — Generate 10 scenarios (50 PDFs) in `generated_docs/` (gitignored)
+- `make demo-samples` — Regenerate `demo_samples/` with one fresh loan scenario (committed to git)
 - `make dev` — Start local dev environment (docker-compose)
 
 ## Key Patterns
