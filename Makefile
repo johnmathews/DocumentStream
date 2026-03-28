@@ -19,6 +19,11 @@ lint-fix:
 generate:
 	uv run python -m generator.generate --count 10 --output generated_docs/
 
+demo-samples:
+	rm -rf demo_samples/
+	PYTHONPATH=src uv run python -c "from generator.scenario import LoanScenario; from generator.generate import generate_scenario_documents; from pathlib import Path; s = LoanScenario.generate(); generate_scenario_documents(s, Path('demo_samples'))"
+	@echo "Demo samples regenerated in demo_samples/"
+
 dev:
 	docker compose up --build
 
