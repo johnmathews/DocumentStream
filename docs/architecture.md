@@ -71,7 +71,7 @@ full observability.
 
 ## Pipeline Flow
 
-### Current (local dev — synchronous)
+### Sync mode (no REDIS_URL — local dev, tests)
 
 ```
 Upload PDF ──▶ Gateway (FastAPI)
@@ -82,10 +82,11 @@ Upload PDF ──▶ Gateway (FastAPI)
                    └── Return results (in-memory)
 ```
 
-Currently all processing happens synchronously in the gateway process.
-Results are stored in-memory (no persistence).
+When `REDIS_URL` is not set, all processing happens synchronously in the
+gateway process. Results are stored in-memory (no persistence). This mode
+is used for testing and local development without Docker.
 
-### Target (K8s — async, queue-based)
+### Async mode (REDIS_URL set — docker-compose, K8s)
 
 ```
 Upload PDF
@@ -116,8 +117,14 @@ Redis:raw-docs ──▶ Extract Workers (PyMuPDF)
                                             classifications)
 ```
 
-Each pipeline stage will be a separate K8s Deployment with its own KEDA ScaledObject.
-KEDA monitors the Redis stream depth for each stage and scales workers independently.
+Each pipeline stage is a separate process (docker-compose service or K8s Deployment)
+with its own KEDA ScaledObject. KEDA monitors the Redis stream depth for each stage
+and scales workers independently.
+
+The gateway detects the mode automatically: if `REDIS_URL` is set, it publishes to
+Redis and returns `status: queued` immediately. Clients poll `GET /api/documents/{id}`
+to track progress through the pipeline stages (queued → extracting → classifying →
+storing → completed).
 
 ---
 
@@ -153,18 +160,29 @@ KEDA monitors the Redis stream depth for each stage and scales workers independe
 | Model | all-MiniLM-L6-v2 (384 dimensions, ~100ms per document) |
 | Scaling | KEDA ScaledObject watching `extracted` stream depth |
 
-### Store Workers (`src/worker/store.py`) — NOT YET IMPLEMENTED
+### Store Workers (`src/worker/store.py`)
 
 | Aspect | Detail |
 |---|---|
 | Database | PostgreSQL with pgvector extension |
-| Blob store | Azure Blob Storage |
+| Blob store | Azure Blob Storage (optional, via `BLOB_CONNECTION_STRING`) |
 | Input | Redis stream `classified` |
 | Stored data | Document metadata, classification results, vector embedding (384 dims), blob URL |
 | Scaling | KEDA ScaledObject watching `classified` stream depth |
 
-*Currently, results are stored in-memory in the gateway. The store worker,
-Redis queue integration, and PostgreSQL/Blob persistence are Day 2 tasks.*
+### Queue Module (`src/worker/queue.py`)
+
+Shared Redis Streams utilities used by all workers:
+
+| Function | Purpose |
+|---|---|
+| `publish()` | Add a message to a stream (auto-serializes dicts/lists to JSON) |
+| `consume()` | Read from a consumer group (blocks until messages arrive) |
+| `ack()` | Acknowledge successful processing |
+| `set_doc_status()` / `get_doc_status()` | Track document progress in Redis hashes |
+| `encode_pdf()` / `decode_pdf()` | Base64 encode/decode PDF bytes for Redis storage |
+| `ensure_consumer_group()` | Create consumer group with MKSTREAM (idempotent) |
+| `setup_shutdown_handler()` | SIGTERM/SIGINT handling for graceful pod shutdown |
 
 ---
 

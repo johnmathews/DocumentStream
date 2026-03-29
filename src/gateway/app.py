@@ -10,6 +10,8 @@ Provides REST endpoints for:
 
 from __future__ import annotations
 
+import logging
+import os
 import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -20,14 +22,36 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title="DocumentStream",
     description="Document processing pipeline for commercial real estate loan documents",
     version="0.1.0",
 )
 
-# In-memory store for now — will be replaced by Redis + PostgreSQL
+# In-memory store (used in sync mode; async mode reads from Redis)
 _documents: dict[str, dict] = {}
+
+# Async mode: set REDIS_URL to enable Redis Streams pipeline
+_REDIS_URL = os.environ.get("REDIS_URL", "")
+_redis_conn = None
+
+
+def _get_redis() -> object | None:
+    """Lazy Redis connection (only created when REDIS_URL is set)."""
+    global _redis_conn
+    if _redis_conn is None and _REDIS_URL:
+        from worker.queue import get_redis
+
+        _redis_conn = get_redis(_REDIS_URL)
+    return _redis_conn
+
+
+def is_async_mode() -> bool:
+    """Check if the gateway is running in async (Redis) mode."""
+    return bool(_REDIS_URL)
+
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 
@@ -63,6 +87,7 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     timestamp: str
+    mode: str = "sync"
 
 
 class GenerateRequest(BaseModel):
@@ -82,6 +107,7 @@ def health_check() -> HealthResponse:
         status="healthy",
         version="0.1.0",
         timestamp=datetime.now(UTC).isoformat(),
+        mode="async" if is_async_mode() else "sync",
     )
 
 
@@ -91,7 +117,8 @@ async def upload_document(
 ) -> DocumentResponse:
     """Upload a PDF document for processing.
 
-    The document is queued for the extract -> classify -> store pipeline.
+    In async mode (REDIS_URL set): queues to Redis Streams, returns immediately.
+    In sync mode: processes inline and returns completed result.
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
@@ -103,7 +130,41 @@ async def upload_document(
     document_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
 
-    # For local dev: process synchronously. In K8s: push to Redis queue.
+    if is_async_mode():
+        return _upload_async(document_id, file.filename, content, now)
+    return _upload_sync(document_id, file.filename, content, now)
+
+
+def _upload_async(document_id: str, filename: str, content: bytes, now: str) -> DocumentResponse:
+    """Publish document to Redis Streams for async pipeline processing."""
+    from worker.queue import STREAM_RAW, encode_pdf, publish, set_doc_status
+
+    r = _get_redis()
+    set_doc_status(r, document_id, "queued", filename=filename, submitted_at=now)
+    publish(
+        r,
+        STREAM_RAW,
+        {
+            "doc_id": document_id,
+            "filename": filename,
+            "pdf_b64": encode_pdf(content),
+        },
+    )
+
+    doc = {
+        "document_id": document_id,
+        "filename": filename,
+        "status": DocumentStatus.QUEUED,
+        "submitted_at": now,
+    }
+    _documents[document_id] = doc
+    logger.info("Queued document %s (%s) for async processing", document_id, filename)
+
+    return DocumentResponse(**{k: v for k, v in doc.items() if k in DocumentResponse.model_fields})
+
+
+def _upload_sync(document_id: str, filename: str, content: bytes, now: str) -> DocumentResponse:
+    """Process document synchronously (local dev mode)."""
     from worker.classify import classify_text
     from worker.extract import extract_text
     from worker.semantic import classify_semantic
@@ -114,7 +175,7 @@ async def upload_document(
 
     doc = {
         "document_id": document_id,
-        "filename": file.filename,
+        "filename": filename,
         "status": DocumentStatus.COMPLETED,
         "classification": rules.classification,
         "confidence": rules.confidence,
@@ -152,8 +213,33 @@ def list_documents(
 
 @app.get("/api/documents/{document_id}", response_model=DocumentResponse)
 def get_document(document_id: str) -> DocumentResponse:
-    """Get details of a specific document."""
+    """Get details of a specific document.
+
+    In async mode, also checks Redis for updated status from workers.
+    """
     doc = _documents.get(document_id)
+
+    # In async mode, check Redis for live status updates from workers
+    if is_async_mode():
+        from worker.queue import get_doc_status
+
+        r = _get_redis()
+        redis_status = get_doc_status(r, document_id)
+        if redis_status:
+            if doc is None:
+                doc = {
+                    "document_id": document_id,
+                    "filename": redis_status.get("filename", "unknown"),
+                    "submitted_at": redis_status.get("submitted_at", ""),
+                }
+                _documents[document_id] = doc
+            doc["status"] = redis_status.get("status", doc.get("status", "queued"))
+            # Merge classification results when completed
+            if redis_status.get("status") == "completed":
+                for field in ("classification", "confidence", "environmental_impact", "word_count"):
+                    if field in redis_status:
+                        doc[field] = redis_status[field]
+
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return DocumentResponse(**{k: v for k, v in doc.items() if k in DocumentResponse.model_fields})

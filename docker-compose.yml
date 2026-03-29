@@ -20,6 +20,45 @@ services:
       timeout: 5s
       retries: 3
 
+  extract-worker:
+    build:
+      context: .
+      dockerfile: src/worker/Dockerfile
+    command: ["uv", "run", "python", "-m", "worker.extract_runner"]
+    environment:
+      - PYTHONPATH=/app/src
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_started
+
+  classify-worker:
+    build:
+      context: .
+      dockerfile: src/worker/Dockerfile
+    command: ["uv", "run", "python", "-m", "worker.classify_runner"]
+    environment:
+      - PYTHONPATH=/app/src
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_started
+
+  store-worker:
+    build:
+      context: .
+      dockerfile: src/worker/Dockerfile
+    command: ["uv", "run", "python", "-m", "worker.store_runner"]
+    environment:
+      - PYTHONPATH=/app/src
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://documentstream:documentstream@postgres:5432/documentstream
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     ports:
@@ -40,6 +79,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./src/worker/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U documentstream"]
       interval: 10s

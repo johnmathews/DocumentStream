@@ -17,20 +17,22 @@ loan documents.
 - **Deps:** uv
 - **CI:** GitHub Actions (lint + test on push to main)
 
-### Planned (not yet implemented)
+### Implemented (Day 2)
 - **Queue:** Redis Streams (pipeline message broker)
 - **Database:** PostgreSQL with pgvector (metadata + embeddings)
-- **Blob storage:** Azure Blob Storage (original PDFs)
+- **Blob storage:** Azure Blob Storage (original PDFs, optional)
+
+### Planned (not yet implemented)
 - **Autoscaling:** KEDA (queue-depth based)
 - **Monitoring:** Prometheus + Grafana
 - **Chaos engineering:** Chaos Mesh
 
 ## Project Structure
-- `src/gateway/` — FastAPI API + web UI (processes documents synchronously for now)
-- `src/worker/` — Extract, classify, and semantic classification modules
+- `src/gateway/` — FastAPI API + web UI (dual-mode: sync or async via Redis)
+- `src/worker/` — Extract, classify, semantic, store modules + Redis queue + worker runners
 - `src/generator/` — PDF document generator (5 templates, CLI tool)
 - `demo_samples/` — One complete loan scenario (5 PDFs, committed to git for visibility)
-- `tests/` — All tests (51 tests)
+- `tests/` — All tests (83 tests)
 - `k8s/` — Kubernetes manifests (empty — Day 2)
 - `infra/` — Azure setup/teardown scripts (empty — Day 2)
 - `locust/` — Load testing (empty — Day 3)
@@ -53,6 +55,9 @@ loan documents.
   - Semantic: environmental impact (None/Low/Medium/High) + industry sectors via embeddings
 - Document embeddings stored for later pgvector semantic search
 - Anchor texts are descriptive paragraphs, not keyword lists
+- Gateway is dual-mode: sync (no REDIS_URL) or async (REDIS_URL set)
+- Workers use Redis consumer groups for at-least-once delivery
+- SIGTERM graceful shutdown on all workers (finish current message before exiting)
 
 ### Target architecture (Day 2-3)
 - Each pipeline stage as a separate K8s Deployment scaled by KEDA
