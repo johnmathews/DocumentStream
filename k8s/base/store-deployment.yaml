@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store-worker
+  namespace: documentstream
+  labels:
+    app: store-worker
+    app.kubernetes.io/part-of: documentstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store-worker
+  template:
+    metadata:
+      labels:
+        app: store-worker
+        app.kubernetes.io/part-of: documentstream
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: store-worker
+          image: acrdocumentstream.azurecr.io/worker:latest
+          imagePullPolicy: Always
+          command: ["uv", "run", "python", "-m", "worker.store_runner"]
+          envFrom:
+            - configMapRef:
+                name: documentstream-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

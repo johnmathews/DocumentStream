@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Images
 
 on:
   push:
@@ -11,6 +11,13 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: gateway
+            dockerfile: src/gateway/Dockerfile
+          - image: worker
+            dockerfile: src/worker/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -23,8 +30,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: src/gateway/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ghcr.io/johnmathews/documentstream:latest
-            ghcr.io/johnmathews/documentstream:${{ github.sha }}
+            ghcr.io/johnmathews/documentstream-${{ matrix.image }}:latest
+            ghcr.io/johnmathews/documentstream-${{ matrix.image }}:${{ github.sha }}

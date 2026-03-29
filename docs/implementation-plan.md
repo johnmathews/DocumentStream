@@ -11,10 +11,10 @@
 | Stage | What | Priority | Est. | Status |
 |---|---|---|---|---|
 | -- | **Day 1: Foundation** | -- | -- | **DONE** |
-| 0 | Tool setup (helm, kustomize) | MUST | 15min | TODO |
-| 1 | Azure infrastructure | MUST | 1.5-2h | TODO |
-| 2 | Redis Streams pipeline refactor | MUST | 2.5-3h | TODO |
-| 3 | K8s manifests | MUST | 2-2.5h | TODO |
+| 0 | Tool setup (helm, kustomize) | MUST | 15min | DONE |
+| 1 | Azure infrastructure | MUST | 1.5-2h | PARTIAL |
+| 2 | Redis Streams pipeline refactor | MUST | 2.5-3h | DONE |
+| 3 | K8s manifests | MUST | 2-2.5h | DONE |
 | 4 | Build, push, deploy to AKS | MUST | 1-1.5h | TODO |
 | 5 | KEDA autoscaling | MUST | 1-1.5h | TODO |
 | 6 | Grafana dashboard | HIGH | 1.5-2h | TODO |

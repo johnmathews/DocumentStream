@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extract-worker
+  namespace: documentstream
+  labels:
+    app: extract-worker
+    app.kubernetes.io/part-of: documentstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: extract-worker
+  template:
+    metadata:
+      labels:
+        app: extract-worker
+        app.kubernetes.io/part-of: documentstream
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: extract-worker
+          image: acrdocumentstream.azurecr.io/worker:latest
+          imagePullPolicy: Always
+          command: ["uv", "run", "python", "-m", "worker.extract_runner"]
+          envFrom:
+            - configMapRef:
+                name: documentstream-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
