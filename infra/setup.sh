@@ -11,8 +11,10 @@
 # Prerequisites:
 #   - az cli logged in
 #   - Sufficient quota (4 vCPU in westeurope)
+#   - PG_PASSWORD environment variable set
 #
 # Usage:
+#   export PG_PASSWORD="your-secure-password"
 #   ./infra/setup.sh
 
 set -euo pipefail
@@ -23,7 +25,7 @@ ACR_NAME="acrdocumentstream"
 AKS_NAME="DocumentStreamManagedCluster"
 PG_NAME="documentstream-pg"
 PG_ADMIN="documentstream"
-PG_PASSWORD="REDACTED"
+PG_PASSWORD="${PG_PASSWORD:?Set PG_PASSWORD environment variable before running this script}"
 STORAGE_NAME="documentstreamstorage"
 BLOB_CONTAINER="documents"
 
