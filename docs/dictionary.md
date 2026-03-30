@@ -207,6 +207,58 @@ Streams guarantee every document gets processed.
 
 ---
 
+## Azure CLI Commands
+
+### Check What's Running
+```bash
+# List all resource groups
+az group list -o table
+
+# List all resources in a resource group
+az resource list -g DocumentStream -o table
+```
+
+### AKS Cluster (Start / Stop)
+The AKS node VMs are the biggest cost. Stopping the cluster deallocates the VMs and stops
+compute billing. Storage (disks, IPs) still costs a small amount while stopped.
+
+```bash
+# Check if the cluster is running
+az aks show -g DocumentStream -n DocumentStreamManagedCluster --query "powerState" -o tsv
+
+# Stop the cluster (saves ~$3-4/day)
+az aks stop -g DocumentStream -n DocumentStreamManagedCluster
+
+# Start the cluster (takes a few minutes)
+az aks start -g DocumentStream -n DocumentStreamManagedCluster
+```
+
+### PostgreSQL Flexible Server (Start / Stop)
+```bash
+# Check status
+az postgres flexible-server show -g DocumentStream -n <server-name> --query "state" -o tsv
+
+# Stop (only pays for storage while stopped)
+az postgres flexible-server stop -g DocumentStream -n <server-name>
+
+# Start
+az postgres flexible-server start -g DocumentStream -n <server-name>
+```
+
+### Cost Awareness
+| Resource | Running cost | Stopped cost |
+|---|---|---|
+| AKS (3x Standard_B2ms) | ~$3-4/day | ~$0.30/day (disks) |
+| PostgreSQL (Burstable B1ms) | ~$0.50/day | ~$0.01/day (storage) |
+| ACR (Basic tier) | ~$0.17/day | ~$0.17/day |
+| Blob Storage | Pennies | Pennies |
+| Static public IPs | ~$0.12/day | ~$0.12/day |
+
+**Rule of thumb:** Stop AKS and PostgreSQL when not actively working. Start them 5-10 minutes
+before you need them.
+
+---
+
 ## Semantic Classification Concepts
 
 ### Vector Embedding
