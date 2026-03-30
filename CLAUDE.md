@@ -22,10 +22,18 @@ loan documents.
 - **Database:** PostgreSQL with pgvector (metadata + embeddings)
 - **Blob storage:** Azure Blob Storage (original PDFs, optional)
 
-### Planned (not yet implemented)
-- **Autoscaling:** KEDA (queue-depth based)
-- **Monitoring:** Prometheus + Grafana
-- **Chaos engineering:** Chaos Mesh
+### Implemented (Day 3)
+- **Autoscaling:** KEDA ScaledObjects (queue-depth based, YAMLs in k8s/scaling/)
+- **Monitoring:** Prometheus + Grafana dashboard (grafana/documentstream-dashboard.json)
+- **Chaos engineering:** Chaos Mesh experiments (k8s/chaos/)
+- **Load testing:** Locust (locust/locustfile.py)
+- **CI/CD:** GitHub Actions deploy workflow (.github/workflows/deploy.yml)
+
+### Not yet done (needs live AKS cluster)
+- Azure infra provisioning (scripts ready in infra/)
+- Build/push images to ACR and deploy to AKS
+- Import Grafana dashboard, apply KEDA/Chaos manifests
+- End-to-end demo rehearsal
 
 ## Project Structure
 - `src/gateway/` — FastAPI API + web UI (dual-mode: sync or async via Redis)
@@ -33,11 +41,13 @@ loan documents.
 - `src/generator/` — PDF document generator (5 templates, CLI tool)
 - `demo_samples/` — One complete loan scenario (5 PDFs, committed to git for visibility)
 - `tests/` — All tests (83 tests)
-- `k8s/` — Kubernetes manifests (empty — Day 2)
-- `infra/` — Azure setup/teardown scripts (empty — Day 2)
-- `locust/` — Load testing (empty — Day 3)
-- `grafana/` — Dashboard JSON (empty — Day 2)
-- `docs/` — Documentation (architecture, classification, demo guide, dictionary)
+- `k8s/base/` — Kubernetes base manifests (9 files: namespace, configmap, deployments, service, ingress, kustomization)
+- `k8s/scaling/` — KEDA ScaledObjects for extract, classify, store workers
+- `k8s/chaos/` — Chaos Mesh experiments (pod-kill, network-delay, cpu-stress)
+- `infra/` — Azure setup/teardown/helm-install scripts
+- `locust/` — Locust load test (locustfile.py)
+- `grafana/` — Grafana dashboard JSON (7 panels)
+- `docs/` — Documentation (architecture, classification, demo guide, dictionary, implementation plan)
 - `journal/` — Development journal
 
 ## Commands
@@ -59,7 +69,8 @@ loan documents.
 - Workers use Redis consumer groups for at-least-once delivery
 - SIGTERM graceful shutdown on all workers (finish current message before exiting)
 
-### Target architecture (Day 2-3)
-- Each pipeline stage as a separate K8s Deployment scaled by KEDA
+### Architecture
+- Each pipeline stage is a separate K8s Deployment scaled by KEDA
 - Documents flow through Redis Streams: raw-docs → extracted → classified → stored
 - Store worker persists to PostgreSQL (pgvector) + Azure Blob Storage
+- CI/CD: ci.yml (lint+test), docker.yml (ghcr.io push), deploy.yml (ACR build + AKS deploy)

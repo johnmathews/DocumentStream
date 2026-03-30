@@ -217,7 +217,8 @@ When stopped (`az aks stop` + `az postgres flexible-server stop`): ~€0.01/hr (
 
 GitHub Actions workflows:
 - **ci.yml** — On push to main and PRs: ruff lint, ruff format check, pytest with coverage
-- **deploy.yml** — *Not yet created.* Will build images → push to ACR → deploy to AKS
+- **docker.yml** — On push to main: build and push images to ghcr.io/johnmathews/k8s
+- **deploy.yml** — On push to main (src/ or k8s/ changes): build → push to ACR → deploy to AKS
 
 ---
 

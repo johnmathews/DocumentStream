@@ -2,7 +2,7 @@
 
 **Timeline:** 3 days (2026-03-28 to 2026-03-30)
 **Interview:** After Day 3
-**Last updated:** 2026-03-29
+**Last updated:** 2026-03-30
 
 ---
 
@@ -12,16 +12,16 @@
 |---|---|---|---|---|
 | -- | **Day 1: Foundation** | -- | -- | **DONE** |
 | 0 | Tool setup (helm, kustomize) | MUST | 15min | DONE |
-| 1 | Azure infrastructure | MUST | 1.5-2h | PARTIAL |
+| 1 | Azure infrastructure | MUST | 1.5-2h | PARTIAL (scripts written, not executed) |
 | 2 | Redis Streams pipeline refactor | MUST | 2.5-3h | DONE |
 | 3 | K8s manifests | MUST | 2-2.5h | DONE |
-| 4 | Build, push, deploy to AKS | MUST | 1-1.5h | TODO |
-| 5 | KEDA autoscaling | MUST | 1-1.5h | TODO |
-| 6 | Grafana dashboard | HIGH | 1.5-2h | TODO |
-| 7 | Chaos Mesh experiments | MEDIUM | 1h | TODO |
-| 8 | Locust load testing | MEDIUM | 1h | TODO |
-| 9 | CI/CD deploy workflow | MEDIUM | 1h | TODO |
-| 10 | Rolling update demo prep | LOW | 30min | TODO |
+| 4 | Build, push, deploy to AKS | MUST | 1-1.5h | TODO (needs Azure) |
+| 5 | KEDA autoscaling | MUST | 1-1.5h | DONE (YAMLs written, needs apply) |
+| 6 | Grafana dashboard | HIGH | 1.5-2h | DONE (JSON written, needs import) |
+| 7 | Chaos Mesh experiments | MEDIUM | 1h | DONE (YAMLs written, needs apply) |
+| 8 | Locust load testing | MEDIUM | 1h | DONE (locustfile written, needs run) |
+| 9 | CI/CD deploy workflow | MEDIUM | 1h | DONE |
+| 10 | Rolling update demo prep | LOW | 30min | TODO (live demo technique) |
 | 11 | Polish and demo rehearsal | MUST | 1.5-2h | TODO |
 
 **If time runs short:** Cut from the bottom. Stages 0-5 + 11 are non-negotiable. Stage 6 (Grafana) is
