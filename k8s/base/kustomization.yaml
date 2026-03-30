@@ -15,4 +15,5 @@ resources:
   - extract-deployment.yaml
   - classify-deployment.yaml
   - store-deployment.yaml
+  - postgres-deployment.yaml
   - ingress.yaml

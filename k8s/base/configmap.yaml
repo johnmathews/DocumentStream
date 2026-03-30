@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/part-of: documentstream
 data:
   REDIS_URL: "redis://redis-master.documentstream.svc.cluster.local:6379"
-  DATABASE_URL: "postgresql://documentstream:documentstream@postgres.documentstream.svc.cluster.local:5432/documentstream"
+  DATABASE_URL: "postgresql://documentstream:documentstream@postgres-postgresql.documentstream.svc.cluster.local:5432/documentstream"
   STREAM_RAW: "raw-docs"
   STREAM_EXTRACTED: "extracted"
   STREAM_CLASSIFIED: "classified"

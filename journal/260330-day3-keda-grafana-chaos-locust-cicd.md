@@ -44,15 +44,29 @@ entirely infrastructure/config work.
 - Updated architecture.md with deploy.yml reference
 - Updated implementation-plan.md progress dashboard
 
+### AKS Deployment (evening session)
+
+Successfully deployed the full pipeline to AKS:
+
+- Built Docker images locally (ARM64→AMD64 cross-compile) and pushed to ACR
+- Installed 5 Helm charts: Redis, ingress-nginx, KEDA, Prometheus+Grafana, Chaos Mesh
+- Deployed all 4 app services + PostgreSQL with pgvector
+- Initialized database schema
+- Pipeline confirmed working: `curl http://51.138.91.82/health` → `{"mode":"async"}`
+
+**Fixes during deployment:**
+- extract-worker memory limit bumped 128Mi → 256Mi (OOMKilled on AMD64)
+- ConfigMap DATABASE_URL updated to match in-cluster Postgres service name
+- Created `k8s/base/postgres-deployment.yaml` — Bitnami PostgreSQL chart was incompatible
+  with the pgvector image, so we deployed PostgreSQL directly as a simple Deployment+Service
+
 ## What's Left
 
-All remaining work requires a live AKS cluster:
-1. Run `infra/setup.sh` to provision Azure resources
-2. Run `infra/helm-install.sh` to install Helm charts
-3. Build and push images to ACR
-4. `kubectl apply -k k8s/base/` + scaling + chaos manifests
-5. Import Grafana dashboard
-6. End-to-end demo rehearsal
+1. Apply KEDA ScaledObjects (`kubectl apply -f k8s/scaling/`)
+2. Import Grafana dashboard
+3. Apply Chaos Mesh experiments
+4. Run Locust load test against live cluster
+5. Demo rehearsal
 
 ## Test Status
 - 83 tests passing, 88% coverage

@@ -12,14 +12,14 @@
 |---|---|---|---|---|
 | -- | **Day 1: Foundation** | -- | -- | **DONE** |
 | 0 | Tool setup (helm, kustomize) | MUST | 15min | DONE |
-| 1 | Azure infrastructure | MUST | 1.5-2h | PARTIAL (scripts written, not executed) |
+| 1 | Azure infrastructure | MUST | 1.5-2h | DONE (AKS + ACR + Helm charts running) |
 | 2 | Redis Streams pipeline refactor | MUST | 2.5-3h | DONE |
 | 3 | K8s manifests | MUST | 2-2.5h | DONE |
-| 4 | Build, push, deploy to AKS | MUST | 1-1.5h | TODO (needs Azure) |
-| 5 | KEDA autoscaling | MUST | 1-1.5h | DONE (YAMLs written, needs apply) |
-| 6 | Grafana dashboard | HIGH | 1.5-2h | DONE (JSON written, needs import) |
-| 7 | Chaos Mesh experiments | MEDIUM | 1h | DONE (YAMLs written, needs apply) |
-| 8 | Locust load testing | MEDIUM | 1h | DONE (locustfile written, needs run) |
+| 4 | Build, push, deploy to AKS | MUST | 1-1.5h | DONE (pipeline running at 51.138.91.82) |
+| 5 | KEDA autoscaling | MUST | 1-1.5h | PARTIAL (YAMLs written, KEDA installed, needs apply) |
+| 6 | Grafana dashboard | HIGH | 1.5-2h | PARTIAL (JSON written, Grafana running, needs import) |
+| 7 | Chaos Mesh experiments | MEDIUM | 1h | PARTIAL (YAMLs written, Chaos Mesh installed, needs apply) |
+| 8 | Locust load testing | MEDIUM | 1h | PARTIAL (locustfile written, needs run against AKS) |
 | 9 | CI/CD deploy workflow | MEDIUM | 1h | DONE |
 | 10 | Rolling update demo prep | LOW | 30min | TODO (live demo technique) |
 | 11 | Polish and demo rehearsal | MUST | 1.5-2h | TODO |
