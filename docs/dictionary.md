@@ -216,6 +216,9 @@ az group list -o table
 
 # List all resources in a resource group
 az resource list -g DocumentStream -o table
+
+# List resources in the AKS-managed resource group (VMs, disks, load balancers)
+az resource list -g MC_DocumentStream_DocumentStreamManagedCluster_westeurope -o table
 ```
 
 ### AKS Cluster (Start / Stop)
@@ -226,15 +229,21 @@ compute billing. Storage (disks, IPs) still costs a small amount while stopped.
 # Check if the cluster is running
 az aks show -g DocumentStream -n DocumentStreamManagedCluster --query "powerState" -o tsv
 
-# Stop the cluster (saves ~$3-4/day)
+# Stop the cluster (saves ~$5/day in compute)
 az aks stop -g DocumentStream -n DocumentStreamManagedCluster
 
-# Start the cluster (takes a few minutes)
+# Start the cluster (takes 3-5 minutes)
 az aks start -g DocumentStream -n DocumentStreamManagedCluster
+
+# Get kubectl credentials after starting
+az aks get-credentials -g DocumentStream -n DocumentStreamManagedCluster --overwrite-existing
 ```
 
 ### PostgreSQL Flexible Server (Start / Stop)
 ```bash
+# List servers
+az postgres flexible-server list -o table
+
 # Check status
 az postgres flexible-server show -g DocumentStream -n <server-name> --query "state" -o tsv
 
@@ -245,17 +254,57 @@ az postgres flexible-server stop -g DocumentStream -n <server-name>
 az postgres flexible-server start -g DocumentStream -n <server-name>
 ```
 
+### Check Costs (az rest)
+The `az costmanagement query` CLI command was removed by Microsoft in 2023. Use `az rest`
+to call the Cost Management API directly:
+
+```bash
+# Cost breakdown by service, per day, this month
+SUB_ID=$(az account show --query id -o tsv) && az rest --method post \
+  --url "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/DocumentStream/providers/Microsoft.CostManagement/query?api-version=2025-03-01" \
+  --body '{
+    "type": "Usage",
+    "dataset": {
+      "aggregation": {
+        "totalCost": { "name": "PreTaxCost", "function": "Sum" }
+      },
+      "granularity": "Daily",
+      "grouping": [{ "name": "ServiceName", "type": "Dimension" }]
+    },
+    "timeframe": "MonthToDate"
+  }'
+```
+
+Other useful groupings (replace `ServiceName` above):
+- `ResourceType` — group by resource type (VMs, disks, LB, etc.)
+- `ResourceId` — group by individual resource
+- `MeterCategory` — group by billing meter category
+
+Valid timeframes: `MonthToDate`, `WeekToDate`, `TheLastMonth`, `BillingMonthToDate`.
+
+**Note:** The Cost Management API and `az consumption usage list` both return empty results
+for free credit / sponsorship subscriptions. For these subscription types, check costs in the
+Azure Portal: **Cost Management + Billing** > **Azure credits** or **Subscriptions** >
+your subscription > **Cost analysis**.
+
 ### Cost Awareness
-| Resource | Running cost | Stopped cost |
-|---|---|---|
-| AKS (3x Standard_B2ms) | ~$3-4/day | ~$0.30/day (disks) |
-| PostgreSQL (Burstable B1ms) | ~$0.50/day | ~$0.01/day (storage) |
-| ACR (Basic tier) | ~$0.17/day | ~$0.17/day |
-| Blob Storage | Pennies | Pennies |
-| Static public IPs | ~$0.12/day | ~$0.12/day |
+
+Our setup: 2x Standard_B2s_v2 nodes, Free tier AKS control plane, Standard Load Balancer.
+
+| Resource | $/hour | $/day (running) | $/day (stopped) |
+|---|---|---|---|
+| 2x Standard_B2s_v2 (2 vCPU, 8 GiB each) | $0.192 | $4.61 | $0 |
+| 2x OS Disk (128 GiB Standard SSD) | — | $0.64 | $0.64 |
+| Standard Load Balancer (first 5 rules) | $0.025 | $0.60 | $0.60 |
+| Public IP | $0.004 | $0.10 | $0.10 |
+| ACR (Basic tier) | — | $0.17 | $0.17 |
+| Blob Storage | — | Pennies | Pennies |
+| **Total** | | **~$6.12** | **~$1.51** |
+
+If PostgreSQL Flexible Server is also running (Burstable B1ms): add ~$1.20/day.
 
 **Rule of thumb:** Stop AKS and PostgreSQL when not actively working. Start them 5-10 minutes
-before you need them.
+before you need them. The cluster takes 3-5 minutes to start.
 
 ---
 
