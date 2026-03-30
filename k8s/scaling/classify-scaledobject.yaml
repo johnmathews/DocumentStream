@@ -1,0 +1,22 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: classify-worker-scaledobject
+  namespace: documentstream
+  labels:
+    app: classify-worker
+    app.kubernetes.io/part-of: documentstream
+spec:
+  scaleTargetRef:
+    name: classify-worker
+  pollingInterval: 15
+  cooldownPeriod: 60
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  triggers:
+    - type: redis-streams
+      metadata:
+        address: redis-master.documentstream.svc.cluster.local:6379
+        stream: extracted
+        consumerGroup: classify-group
+        lagCount: "5"

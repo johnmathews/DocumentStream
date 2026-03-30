@@ -1,0 +1,37 @@
+# NetworkChaos: Inject latency into store-worker pods
+#
+# Demo value:
+#   Adds 500ms network delay (with jitter) to store-worker pods,
+#   simulating degraded connectivity to PostgreSQL or Azure Blob Storage.
+#   The pipeline slows down but does not break — Redis buffers messages,
+#   and store-workers continue processing at reduced throughput. Grafana
+#   dashboards show a clear latency spike, proving observability works.
+#
+# Usage:
+#   kubectl apply -f k8s/chaos/network-delay.yaml
+#   kubectl get networkchaos -n documentstream
+#   kubectl delete networkchaos network-delay-store-worker -n documentstream
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-store-worker
+  namespace: documentstream
+  annotations:
+    chaos-mesh.org/description: >-
+      Inject 500ms network latency into store-worker pods to simulate
+      degraded database or storage connectivity. Pipeline should slow
+      but remain functional with no message loss.
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - documentstream
+    labelSelectors:
+      app: store-worker
+  delay:
+    latency: "500ms"
+    correlation: "50"
+    jitter: "100ms"
+  duration: "2m"

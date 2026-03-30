@@ -1,0 +1,37 @@
+# StressChaos: CPU stress on classify-worker pods
+#
+# Demo value:
+#   Burns 80% CPU on classify-worker pods for 2 minutes, simulating a
+#   heavy workload or noisy-neighbor scenario. KEDA detects the growing
+#   Redis stream lag (messages piling up because workers are slow) and
+#   scales up additional classify-worker pods to compensate. Once the
+#   stress ends, KEDA scales back down. This demonstrates elastic
+#   autoscaling driven by real queue depth metrics.
+#
+# Usage:
+#   kubectl apply -f k8s/chaos/cpu-stress.yaml
+#   kubectl get stresschaos -n documentstream
+#   kubectl delete stresschaos cpu-stress-classify-worker -n documentstream
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-classify-worker
+  namespace: documentstream
+  annotations:
+    chaos-mesh.org/description: >-
+      Burn 80% CPU on classify-worker pods to trigger KEDA autoscaling.
+      Queue depth should increase, KEDA should spin up additional pods,
+      and throughput should recover without manual intervention.
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - documentstream
+    labelSelectors:
+      app: classify-worker
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
+  duration: "2m"

@@ -1,0 +1,22 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: extract-worker-scaledobject
+  namespace: documentstream
+  labels:
+    app: extract-worker
+    app.kubernetes.io/part-of: documentstream
+spec:
+  scaleTargetRef:
+    name: extract-worker
+  pollingInterval: 15
+  cooldownPeriod: 60
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  triggers:
+    - type: redis-streams
+      metadata:
+        address: redis-master.documentstream.svc.cluster.local:6379
+        stream: raw-docs
+        consumerGroup: extract-group
+        lagCount: "5"
