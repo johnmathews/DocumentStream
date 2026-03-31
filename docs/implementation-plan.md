@@ -16,10 +16,10 @@
 | 2 | Redis Streams pipeline refactor | MUST | 2.5-3h | DONE |
 | 3 | K8s manifests | MUST | 2-2.5h | DONE |
 | 4 | Build, push, deploy to AKS | MUST | 1-1.5h | DONE (pipeline running at 51.138.91.82) |
-| 5 | KEDA autoscaling | MUST | 1-1.5h | PARTIAL (YAMLs written, KEDA installed, needs apply) |
-| 6 | Grafana dashboard | HIGH | 1.5-2h | PARTIAL (JSON written, Grafana running, needs import) |
+| 5 | KEDA autoscaling | MUST | 1-1.5h | DONE (applied, verified scaling 1→8→1) |
+| 6 | Grafana dashboard | HIGH | 1.5-2h | DONE (imported, verified with live traffic) |
 | 7 | Chaos Mesh experiments | MEDIUM | 1h | PARTIAL (YAMLs written, Chaos Mesh installed, needs apply) |
-| 8 | Locust load testing | MEDIUM | 1h | PARTIAL (locustfile written, needs run against AKS) |
+| 8 | Locust load testing | MEDIUM | 1h | DONE (ran against AKS, verified KEDA scaling) |
 | 9 | CI/CD deploy workflow | MEDIUM | 1h | DONE |
 | 10 | Rolling update demo prep | LOW | 30min | TODO (live demo technique) |
 | 11 | Polish and demo rehearsal | MUST | 1.5-2h | TODO |
