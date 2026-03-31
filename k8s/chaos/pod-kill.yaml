@@ -24,7 +24,7 @@ metadata:
       and resume processing without data loss.
 spec:
   action: pod-kill
-  mode: fixed-number
+  mode: fixed
   value: "2"
   selector:
     namespaces:
