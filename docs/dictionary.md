@@ -401,6 +401,19 @@ concept — industrial pollution.
 We use the `all-MiniLM-L6-v2` model (sentence-transformers) which produces 384-dimensional
 vectors. "384-dimensional" means each text becomes a list of 384 numbers.
 
+### ONNX Runtime
+An optimized inference engine for running machine learning models. Instead of using
+full PyTorch (~5GB) to run the embedding model, we export the model to ONNX format
+and run it with ONNX Runtime (~50MB). Same model, same results, much smaller footprint.
+
+sentence-transformers supports this with a single parameter:
+```python
+SentenceTransformer("all-MiniLM-L6-v2", backend="onnx")
+```
+
+This is important for K8s because smaller images mean faster pod startup (KEDA can
+scale workers up more quickly) and lower memory usage per pod.
+
 ### Cosine Similarity
 A way to measure how similar two vectors are. Returns a value between -1 and 1:
 - 1.0 = identical meaning

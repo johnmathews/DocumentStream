@@ -184,8 +184,11 @@ We use pgvector (PostgreSQL extension) for the demo. For production at a bank,
 
 ### Embedding model
 
-We use `all-MiniLM-L6-v2` (sentence-transformers, 384 dimensions) — free,
-runs locally, no API dependency. For production:
+We use `all-MiniLM-L6-v2` (sentence-transformers, 384 dimensions) with **ONNX Runtime**
+as the inference backend instead of PyTorch. This reduces the runtime from ~5GB (full
+PyTorch) to ~50MB (ONNX Runtime), which means faster container image pulls, faster pod
+startup when KEDA scales workers, and lower memory per pod. Free, runs locally, no API
+dependency. For production:
 
 **Azure OpenAI `text-embedding-3-small`** would be preferred:
 - Higher quality embeddings (1536 dimensions)

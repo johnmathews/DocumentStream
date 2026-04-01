@@ -84,6 +84,15 @@ to the Grafana dashboard, completing the storage layer of the pipeline.
 - `grafana/documentstream-dashboard.json` — 2 new blob storage panels
 - `tests/test_store.py` — 9 new tests (doc_type inference, blob upload, record fields)
 
+### Switch to ONNX Runtime
+
+- Changed `SentenceTransformer(MODEL_NAME)` to `SentenceTransformer(MODEL_NAME, backend="onnx")`
+  in `src/worker/semantic.py`
+- Replaced `sentence-transformers` dependency with `sentence-transformers[onnx]` in `pyproject.toml`
+  (pulls in `onnxruntime` and `optimum`)
+- ONNX Runtime is ~50MB vs ~5GB for full PyTorch — faster image pulls, faster KEDA scale-up,
+  lower memory per classify-worker pod
+
 ## Test Status
 
 - 92 tests passing (up from 83), lint clean

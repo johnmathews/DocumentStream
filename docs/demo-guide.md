@@ -205,14 +205,17 @@ for RAG workloads on Azure.
 > production, if throughput requirements grew beyond what a single Redis instance
 > handles, I'd consider Azure Event Hubs, which is Kafka-compatible and fully managed."
 
-### Sentence-Transformers vs Azure OpenAI
-**When to mention:** When asked about the embedding model.
+### Sentence-Transformers + ONNX Runtime vs Azure OpenAI
+**When to mention:** When asked about the embedding model or container optimization.
 
 **What to say:**
-> "I used sentence-transformers locally — specifically all-MiniLM-L6-v2 — because
-> it runs without API dependencies and is free. For production, I'd use Azure OpenAI's
-> text-embedding-3-small model. The embeddings are higher quality, and the data stays
-> within Azure's boundary — important for a bank's compliance requirements."
+> "I used sentence-transformers locally — specifically all-MiniLM-L6-v2 — with ONNX
+> Runtime as the inference backend instead of PyTorch. ONNX Runtime is about 50MB
+> versus 5GB for full PyTorch, which makes a big difference in a K8s environment —
+> faster image pulls, faster pod startup when KEDA scales up, and lower memory per
+> worker. For production, I'd use Azure OpenAI's text-embedding-3-small model. The
+> embeddings are higher quality, and the data stays within Azure's boundary —
+> important for a bank's compliance requirements."
 
 ### Chaos Engineering
 **When to mention:** When they seem impressed by the self-healing demo.

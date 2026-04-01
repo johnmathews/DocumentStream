@@ -38,7 +38,7 @@ EMBEDDING_DIM = 384
 @lru_cache(maxsize=1)
 def _get_model() -> SentenceTransformer:
     """Load the embedding model (cached, loaded once)."""
-    return SentenceTransformer(MODEL_NAME)
+    return SentenceTransformer(MODEL_NAME, backend="onnx")
 
 
 def embed_text(text: str) -> NDArray[np.float32]:

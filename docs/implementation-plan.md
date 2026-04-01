@@ -25,6 +25,7 @@
 | 11 | Polish and demo rehearsal | MUST | 1.5-2h | TODO |
 | -- | **Day 4: Enhancements** | -- | -- | **DONE** |
 | 12 | Azure Blob Storage integration | HIGH | 2h | DONE (PDFs stored in Azure, metrics in Grafana) |
+| 13 | Switch to ONNX Runtime | MEDIUM | 15min | DONE (sentence-transformers backend="onnx", ~50MB vs ~5GB PyTorch) |
 
 **If time runs short:** Cut from the bottom. Stages 0-5 + 11 are non-negotiable. Stage 6 (Grafana) is
 the most important "nice to have" because it's the visual centerpiece of the demo. Stages 7-10 can
