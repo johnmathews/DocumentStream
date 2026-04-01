@@ -93,6 +93,15 @@ to the Grafana dashboard, completing the storage layer of the pipeline.
 - ONNX Runtime is ~50MB vs ~5GB for full PyTorch — faster image pulls, faster KEDA scale-up,
   lower memory per classify-worker pod
 
+### Wrap-up Fixes (code review)
+
+- Added `servicemonitor.yaml` to `k8s/base/kustomization.yaml` — it was missing, so
+  `kubectl apply -k k8s/base/` would silently skip it
+- Increased store-worker memory limits from 64Mi/128Mi to 128Mi/256Mi — Python with
+  psycopg, azure-storage-blob, and prometheus_client exceeds 64Mi
+- Added comment on Azurite dev key in docker-compose.yml to prevent false positives
+  from secret scanners
+
 ## Test Status
 
-- 92 tests passing (up from 83), lint clean
+- 92 tests passing (up from 83), 88% coverage, lint clean

@@ -55,6 +55,8 @@ services:
       - PYTHONPATH=/app/src
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://documentstream:documentstream@postgres:5432/documentstream
+      # Azurite default dev key — NOT a real secret, publicly documented at
+      # https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite
       - BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
       - BLOB_CONTAINER=documents
     depends_on:

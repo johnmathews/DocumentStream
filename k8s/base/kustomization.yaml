@@ -12,6 +12,7 @@ resources:
   - configmap.yaml
   - gateway-deployment.yaml
   - gateway-service.yaml
+  - servicemonitor.yaml
   - extract-deployment.yaml
   - classify-deployment.yaml
   - store-deployment.yaml
