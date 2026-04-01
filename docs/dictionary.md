@@ -38,7 +38,34 @@ file, but managed by K8s and versioned.
 
 ### Secret
 Same as ConfigMap but for sensitive data (passwords, API keys). Base64-encoded at rest.
-Like Docker secrets.
+Like Docker secrets. Referenced via `secretRef` in a Deployment's `envFrom` — if listed
+after a ConfigMap, Secret values override ConfigMap values with the same key.
+
+**Important:** Never commit Secrets to git. Create them via `kubectl create secret` or
+apply a gitignored YAML file. GitHub Push Protection will block pushes containing keys.
+
+### ServiceMonitor
+A Custom Resource (CRD) used by the **kube-prometheus-stack** to tell Prometheus which
+services to scrape. Pod annotations like `prometheus.io/scrape: "true"` do **not** work
+with kube-prometheus-stack — you must create a ServiceMonitor instead.
+
+Key gotcha: the ServiceMonitor needs a `release: prometheus` label (or whatever label
+selector your Prometheus instance uses). Without it, Prometheus silently ignores it.
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    release: prometheus  # required!
+spec:
+  selector:
+    matchLabels:
+      app: gateway
+  endpoints:
+    - port: http         # must match a named port on the Service
+      path: /metrics
+```
 
 ---
 
@@ -57,6 +84,17 @@ How K8s deploys a new version: start new pods, wait until they're ready, then ki
 At no point are zero pods running. This gives you **zero-downtime deployments**. If the new
 pods fail their readiness probes, K8s stops the rollout automatically.
 
+### `kubectl rollout restart`
+Triggers a rolling restart of all pods in a deployment without changing any YAML. Needed
+when a ConfigMap or Secret changes — K8s does **not** automatically restart pods when their
+ConfigMap values change. You have to tell it to.
+
+```bash
+kubectl rollout restart deployment/gateway deployment/store-worker
+kubectl rollout status deployment/gateway   # watch progress
+kubectl rollout history deployment/gateway  # see past revisions
+```
+
 ### Rollback
 Undo a deployment: `kubectl rollout undo deployment/my-app`. K8s keeps the previous pod
 spec and can revert to it instantly.
@@ -66,6 +104,28 @@ spec and can revert to it instantly.
   K8s uses this to decide which node to place the pod on.
 - **Limit:** "This container must never use more than 512MB RAM."
   If it exceeds the memory limit, K8s kills it (OOMKilled).
+
+### Pod READY Column
+When you run `kubectl get pods`, the READY column shows `1/1` or `2/2`. This is
+`READY_CONTAINERS/TOTAL_CONTAINERS` in that pod. A pod with an app + sidecar container
+would show `2/2` when both are ready, or `1/2` if one is still starting.
+
+### `kubectl get all` Limitations
+Despite the name, `kubectl get all` only returns a hardcoded subset: Pods, Services,
+Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, CronJobs. It does **not**
+include HPAs, ConfigMaps, Secrets, Ingresses, PVCs, ServiceMonitors, ScaledObjects, etc.
+
+To see everything in a namespace, be explicit:
+```bash
+kubectl get deploy,svc,hpa,ingress,configmap,scaledobject -n documentstream
+```
+
+### Default Namespace
+Set a default namespace to avoid typing `-n documentstream` on every command:
+```bash
+kubectl config set-context --current --namespace=documentstream
+kubectl config view --minify | grep namespace  # verify
+```
 
 ### Horizontal Pod Autoscaler (HPA)
 Watches a metric (CPU, memory, custom) and adjusts the number of pod replicas. Example:
@@ -154,6 +214,27 @@ not in use (you only pay for disk storage while stopped).
 
 ### Azure Blob Storage
 Object storage for files (like S3). We store the original PDF files here. Extremely cheap.
+PDFs are organized as `{doc_id}/{loan_id}/{doc_type}.pdf` in a container called `documents`.
+
+### Azurite
+Microsoft's local emulator for Azure Storage. Runs as a Docker container and provides the
+same API as real Azure Blob Storage. Used in `docker-compose.yml` for local dev so you don't
+need a real Azure account to test blob uploads.
+
+### Building and Pushing Images to ACR
+`docker build` only creates the image **locally**. To deploy to AKS, you must also push:
+
+```bash
+# Option 1: Build locally + push (need --platform for ARM Mac → AMD64 cluster)
+docker build --platform linux/amd64 -t acrdocumentstream.azurecr.io/gateway:latest -f src/gateway/Dockerfile .
+az acr login --name acrdocumentstream
+docker push acrdocumentstream.azurecr.io/gateway:latest
+
+# Option 2: Build remotely on ACR (no platform flag needed, builds on Linux)
+az acr build --registry acrdocumentstream --image gateway:latest --file src/gateway/Dockerfile .
+```
+
+After pushing, `kubectl rollout restart deployment/gateway` tells K8s to pull the new image.
 
 ---
 

@@ -135,7 +135,7 @@ storing → completed).
 | Aspect | Detail |
 |---|---|
 | Framework | FastAPI |
-| Endpoints | `/health`, `/api/documents`, `/api/generate`, `/` (web UI) |
+| Endpoints | `/health`, `/api/documents`, `/api/generate`, `/metrics`, `/` (web UI) |
 | K8s role | Single Deployment with a Service and Ingress |
 | Scaling | HPA based on CPU (not queue-based — it handles HTTP, not queue work) |
 
@@ -165,9 +165,10 @@ storing → completed).
 | Aspect | Detail |
 |---|---|
 | Database | PostgreSQL with pgvector extension |
-| Blob store | Azure Blob Storage (optional, via `BLOB_CONNECTION_STRING`) |
+| Blob store | Azure Blob Storage (via `BLOB_CONNECTION_STRING` in K8s Secret) |
+| Metrics | Prometheus counters: `documentstream_blob_uploads_total`, `documentstream_blob_bytes_total` (by doc_type) |
 | Input | Redis stream `classified` |
-| Stored data | Document metadata, classification results, vector embedding (384 dims), blob URL |
+| Stored data | Document metadata, doc_type, classification results, vector embedding (384 dims), blob URL |
 | Scaling | KEDA ScaledObject watching `classified` stream depth |
 
 ### Queue Module (`src/worker/queue.py`)
@@ -211,7 +212,7 @@ When stopped (`az aks stop` + `az postgres flexible-server stop`): ~€0.01/hr (
 | chaos-mesh/chaos-mesh | chaos-mesh | Chaos engineering |
 | ingress-nginx | ingress-nginx | HTTP routing |
 
-*Not yet installed — these are deployed when the AKS cluster is provisioned.*
+All charts are installed and running on the live AKS cluster.
 
 ### CI/CD
 

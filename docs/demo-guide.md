@@ -36,7 +36,9 @@ Before the interview:
 **Show:** Click "Generate" with 5 scenarios
 
 > "Each loan scenario generates 5 linked documents. They share the same loan ID, client,
-> and property — just like a real bank's document management system."
+> and property — just like a real bank's document management system. Each PDF is uploaded
+> to Azure Blob Storage automatically — you can see the count and total size per document
+> type on the Grafana dashboard."
 
 **Point out the two classifier columns:**
 > "Every document goes through two classifiers. The rule-based classifier handles privacy
@@ -148,7 +150,9 @@ Before the interview:
 > "The full pipeline: FastAPI gateway receives uploads, puts them on a Redis stream.
 > Extract workers pull text with PyMuPDF. Classify workers run both rule-based and
 > semantic classification. Store workers save metadata and embeddings to PostgreSQL
-> with pgvector, and original PDFs to Azure Blob Storage."
+> with pgvector, and original PDFs to Azure Blob Storage. The gateway exposes Prometheus
+> metrics — blob upload counts and sizes by document type — which Prometheus scrapes
+> via a ServiceMonitor and Grafana displays in real time."
 
 **Show:** Cost breakdown
 
