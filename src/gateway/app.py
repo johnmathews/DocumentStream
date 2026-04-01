@@ -19,7 +19,7 @@ from pathlib import Path
 
 import jinja2
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -109,6 +109,14 @@ def health_check() -> HealthResponse:
         timestamp=datetime.now(UTC).isoformat(),
         mode="async" if is_async_mode() else "sync",
     )
+
+
+@app.get("/metrics")
+def metrics() -> PlainTextResponse:
+    """Prometheus metrics endpoint."""
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.post("/api/documents", response_model=DocumentResponse)
@@ -257,6 +265,7 @@ def generate_documents(request: GenerateRequest) -> GenerateResponse:
     from worker.classify import classify_text
     from worker.extract import extract_text
     from worker.semantic import classify_semantic
+    from worker.store import upload_blob
 
     loan_ids: list[str] = []
 
@@ -272,10 +281,13 @@ def generate_documents(request: GenerateRequest) -> GenerateResponse:
 
             document_id = str(uuid.uuid4())
             now = datetime.now(UTC).isoformat()
+            filename = f"{scenario.loan_id}/{doc_type}.pdf"
+
+            blob_url = upload_blob(document_id, filename, bytes(pdf_bytes), doc_type=doc_type)
 
             _documents[document_id] = {
                 "document_id": document_id,
-                "filename": f"{scenario.loan_id}/{doc_type}.pdf",
+                "filename": filename,
                 "status": DocumentStatus.COMPLETED,
                 "classification": rules.classification,
                 "confidence": rules.confidence,
@@ -291,6 +303,7 @@ def generate_documents(request: GenerateRequest) -> GenerateResponse:
                 "doc_type": doc_type,
                 "matched_keywords": rules.matched_keywords,
                 "scores": rules.scores,
+                "blob_url": blob_url,
             }
 
     return GenerateResponse(

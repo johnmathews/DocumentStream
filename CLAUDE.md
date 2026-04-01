@@ -20,7 +20,6 @@ loan documents.
 ### Implemented (Day 2)
 - **Queue:** Redis Streams (pipeline message broker)
 - **Database:** PostgreSQL with pgvector (metadata + embeddings)
-- **Blob storage:** Azure Blob Storage (original PDFs, optional)
 
 ### Implemented (Day 3)
 - **Autoscaling:** KEDA ScaledObjects (queue-depth based, YAMLs in k8s/scaling/)
@@ -29,24 +28,29 @@ loan documents.
 - **Load testing:** Locust (locust/locustfile.py)
 - **CI/CD:** GitHub Actions deploy workflow (.github/workflows/deploy.yml)
 
-### Not yet done (needs live AKS cluster)
-- Azure infra provisioning (scripts ready in infra/)
-- Build/push images to ACR and deploy to AKS
-- Import Grafana dashboard, apply KEDA/Chaos manifests
-- End-to-end demo rehearsal
+### Implemented (Day 4)
+- **Blob storage:** Azure Blob Storage (PDFs uploaded on generate, tracked in PostgreSQL)
+- **Custom metrics:** Prometheus counters for blob uploads (count + bytes by doc_type)
+- **Dashboard:** 9 Grafana panels (added blob count/size by doc type)
+- **ServiceMonitor:** Prometheus scrape config for kube-prometheus-stack
+
+### Not yet done
+- Apply Chaos Mesh experiments on live cluster
+- CI/CD deploy workflow needs AZURE_CREDENTIALS secret
+- Demo rehearsal
 
 ## Project Structure
 - `src/gateway/` — FastAPI API + web UI (dual-mode: sync or async via Redis)
 - `src/worker/` — Extract, classify, semantic, store modules + Redis queue + worker runners
 - `src/generator/` — PDF document generator (5 templates, CLI tool)
 - `demo_samples/` — One complete loan scenario (5 PDFs, committed to git for visibility)
-- `tests/` — All tests (83 tests)
-- `k8s/base/` — Kubernetes base manifests (9 files: namespace, configmap, deployments, service, ingress, kustomization)
+- `tests/` — All tests (92 tests)
+- `k8s/base/` — Kubernetes base manifests (10 files: namespace, configmap, deployments, service, ingress, kustomization, servicemonitor)
 - `k8s/scaling/` — KEDA ScaledObjects for extract, classify, store workers
 - `k8s/chaos/` — Chaos Mesh experiments (pod-kill, network-delay, cpu-stress)
 - `infra/` — Azure setup/teardown/helm-install scripts
 - `locust/` — Locust load test (locustfile.py)
-- `grafana/` — Grafana dashboard JSON (7 panels)
+- `grafana/` — Grafana dashboard JSON (9 panels)
 - `docs/` — Documentation (architecture, classification, demo guide, dictionary, implementation plan)
 - `journal/` — Development journal
 

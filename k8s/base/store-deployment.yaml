@@ -16,6 +16,10 @@ spec:
       labels:
         app: store-worker
         app.kubernetes.io/part-of: documentstream
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9102"
+        prometheus.io/path: "/metrics"
     spec:
       terminationGracePeriodSeconds: 30
       containers:
@@ -23,9 +27,16 @@ spec:
           image: acrdocumentstream.azurecr.io/worker:latest
           imagePullPolicy: Always
           command: ["uv", "run", "python", "-m", "worker.store_runner"]
+          ports:
+            - name: metrics
+              containerPort: 9102
+              protocol: TCP
           envFrom:
             - configMapRef:
                 name: documentstream-config
+            - secretRef:
+                name: documentstream-secrets
+                optional: true
           resources:
             requests:
               cpu: 50m

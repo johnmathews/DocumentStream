@@ -16,6 +16,10 @@ spec:
       labels:
         app: gateway
         app.kubernetes.io/part-of: documentstream
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: gateway
@@ -26,6 +30,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: documentstream-config
+            - secretRef:
+                name: documentstream-secrets
+                optional: true
           resources:
             requests:
               cpu: 100m

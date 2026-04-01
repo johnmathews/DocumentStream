@@ -29,7 +29,7 @@ from worker.queue import (
     set_doc_status,
     setup_shutdown_handler,
 )
-from worker.store import DATABASE_URL, DocumentRecord, store_document, upload_blob
+from worker.store import DATABASE_URL, DocumentRecord, infer_doc_type, store_document, upload_blob
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +52,13 @@ def process_message(r: object, msg: object, conn: psycopg.Connection) -> None:
     doc_id = msg.data["doc_id"]
     filename = msg.data["filename"]
 
-    logger.info("Storing: %s (%s)", filename, doc_id)
+    doc_type = infer_doc_type(filename)
+    logger.info("Storing: %s (%s, type=%s)", filename, doc_id, doc_type)
     set_doc_status(r, doc_id, "storing")
+
+    # Upload original PDF to blob storage
+    pdf_bytes = decode_pdf(msg.data["pdf_b64"])
+    blob_url = upload_blob(doc_id, filename, pdf_bytes, doc_type=doc_type)
 
     record = DocumentRecord(
         doc_id=doc_id,
@@ -71,13 +76,11 @@ def process_message(r: object, msg: object, conn: psycopg.Connection) -> None:
         environmental_confidence=float(msg.data["environmental_confidence"]),
         industries=_parse_json_field(msg.data, "industries"),
         embedding=_parse_json_field(msg.data, "embedding"),
+        doc_type=doc_type,
+        blob_url=blob_url,
     )
 
     store_document(record, conn)
-
-    # Upload original PDF to blob storage
-    pdf_bytes = decode_pdf(msg.data["pdf_b64"])
-    upload_blob(doc_id, filename, pdf_bytes)
 
     set_doc_status(
         r,
@@ -93,9 +96,16 @@ def process_message(r: object, msg: object, conn: psycopg.Connection) -> None:
     logger.info("Stored: %s — %s", filename, record.classification)
 
 
+METRICS_PORT = int(os.environ.get("METRICS_PORT", "9102"))
+
+
 def run() -> None:
     """Main worker loop."""
+    from prometheus_client import start_http_server
+
     setup_shutdown_handler()
+    start_http_server(METRICS_PORT)
+    logger.info("Prometheus metrics server on :%d", METRICS_PORT)
 
     r = get_redis()
     conn = psycopg.connect(DATABASE_URL)

@@ -1,8 +1,8 @@
 # DocumentStream — Implementation Plan
 
-**Timeline:** 3 days (2026-03-28 to 2026-03-30)
+**Timeline:** 3 days (2026-03-28 to 2026-03-30) + Day 4 enhancements
 **Interview:** After Day 3
-**Last updated:** 2026-03-30
+**Last updated:** 2026-04-01
 
 ---
 
@@ -17,12 +17,14 @@
 | 3 | K8s manifests | MUST | 2-2.5h | DONE |
 | 4 | Build, push, deploy to AKS | MUST | 1-1.5h | DONE (pipeline running at 51.138.91.82) |
 | 5 | KEDA autoscaling | MUST | 1-1.5h | DONE (applied, verified scaling 1→8→1) |
-| 6 | Grafana dashboard | HIGH | 1.5-2h | DONE (imported, verified with live traffic) |
+| 6 | Grafana dashboard | HIGH | 1.5-2h | DONE (9 panels, including blob storage metrics) |
 | 7 | Chaos Mesh experiments | MEDIUM | 1h | PARTIAL (YAMLs written, Chaos Mesh installed, needs apply) |
 | 8 | Locust load testing | MEDIUM | 1h | DONE (ran against AKS, verified KEDA scaling) |
-| 9 | CI/CD deploy workflow | MEDIUM | 1h | DONE |
+| 9 | CI/CD deploy workflow | MEDIUM | 1h | PARTIAL (workflow written, needs AZURE_CREDENTIALS secret) |
 | 10 | Rolling update demo prep | LOW | 30min | TODO (live demo technique) |
 | 11 | Polish and demo rehearsal | MUST | 1.5-2h | TODO |
+| -- | **Day 4: Enhancements** | -- | -- | **DONE** |
+| 12 | Azure Blob Storage integration | HIGH | 2h | DONE (PDFs stored in Azure, metrics in Grafana) |
 
 **If time runs short:** Cut from the bottom. Stages 0-5 + 11 are non-negotiable. Stage 6 (Grafana) is
 the most important "nice to have" because it's the visual centerpiece of the demo. Stages 7-10 can

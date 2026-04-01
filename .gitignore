@@ -33,6 +33,7 @@ htmlcov/
 *.pem
 credentials.json
 *.secret
+k8s/base/secret.yaml
 
 # OS
 .DS_Store

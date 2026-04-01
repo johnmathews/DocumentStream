@@ -49,15 +49,21 @@ services:
       context: .
       dockerfile: src/worker/Dockerfile
     command: ["uv", "run", "python", "-m", "worker.store_runner"]
+    ports:
+      - "9102:9102"
     environment:
       - PYTHONPATH=/app/src
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql://documentstream:documentstream@postgres:5432/documentstream
+      - BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - BLOB_CONTAINER=documents
     depends_on:
       redis:
         condition: service_started
       postgres:
         condition: service_healthy
+      azurite:
+        condition: service_started
 
   redis:
     image: redis:7-alpine
@@ -68,6 +74,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - "10000:10000"
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000"]
 
   postgres:
     image: pgvector/pgvector:pg16

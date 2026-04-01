@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from worker.store import DocumentRecord, store_document
+from worker.store import DocumentRecord, infer_doc_type, store_document
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def sample_record() -> DocumentRecord:
     """Create a sample document record for testing."""
     return DocumentRecord(
         doc_id="store-test-1",
-        filename="test.pdf",
+        filename="LOAN-2025-001/loan_application.pdf",
         text="sample document text for testing",
         page_count=2,
         word_count=6,
@@ -32,6 +32,7 @@ def sample_record() -> DocumentRecord:
         environmental_confidence=0.55,
         industries=["Real Estate", "Financial Services"],
         embedding=[0.1] * 384,
+        doc_type="loan_application",
     )
 
 
@@ -52,9 +53,11 @@ class TestStoreDocument:
         assert "INSERT INTO documents" in sql
         assert "ON CONFLICT (doc_id) DO NOTHING" in sql
         assert params["doc_id"] == "store-test-1"
+        assert params["doc_type"] == "loan_application"
         assert params["classification"] == "Confidential"
         assert params["embedding"] == str([0.1] * 384)
         assert params["industries"] == json.dumps(["Real Estate", "Financial Services"])
+        assert params["blob_url"] is None
 
         mock_conn.commit.assert_called_once()
         # Should NOT close the connection we provided
@@ -84,6 +87,8 @@ class TestDocumentRecord:
         assert sample_record.page_count == 2
         assert len(sample_record.embedding) == 384
         assert sample_record.pdf_bytes is None
+        assert sample_record.doc_type == "loan_application"
+        assert sample_record.blob_url is None
 
     def test_with_pdf_bytes(self) -> None:
         record = DocumentRecord(
@@ -106,6 +111,52 @@ class TestDocumentRecord:
         )
         assert record.pdf_bytes == b"fake pdf"
 
+    def test_with_blob_url(self) -> None:
+        record = DocumentRecord(
+            doc_id="test",
+            filename="test.pdf",
+            text="text",
+            page_count=1,
+            word_count=1,
+            classification="Public",
+            confidence=1.0,
+            matched_keywords={},
+            scores={},
+            semantic_privacy="Public",
+            semantic_privacy_confidence=1.0,
+            environmental_impact="None",
+            environmental_confidence=1.0,
+            industries=[],
+            embedding=[],
+            doc_type="invoice",
+            blob_url="test/test.pdf",
+        )
+        assert record.doc_type == "invoice"
+        assert record.blob_url == "test/test.pdf"
+
+
+class TestInferDocType:
+    def test_loan_application(self) -> None:
+        assert infer_doc_type("LOAN-2025-001/loan_application.pdf") == "loan_application"
+
+    def test_valuation_report(self) -> None:
+        assert infer_doc_type("LOAN-2025-001/valuation_report.pdf") == "valuation_report"
+
+    def test_kyc_report(self) -> None:
+        assert infer_doc_type("LOAN-2025-001/kyc_report.pdf") == "kyc_report"
+
+    def test_contract(self) -> None:
+        assert infer_doc_type("LOAN-2025-001/contract.pdf") == "contract"
+
+    def test_invoice(self) -> None:
+        assert infer_doc_type("LOAN-2025-001/invoice.pdf") == "invoice"
+
+    def test_unknown_type(self) -> None:
+        assert infer_doc_type("random-file.pdf") == "unknown"
+
+    def test_bare_filename(self) -> None:
+        assert infer_doc_type("contract.pdf") == "contract"
+
 
 class TestUploadBlob:
     def test_no_blob_connection_string(self) -> None:
@@ -113,3 +164,20 @@ class TestUploadBlob:
 
         result = upload_blob("doc-1", "test.pdf", b"content")
         assert result is None
+
+    @patch("worker.store.BLOB_CONNECTION_STRING", "UseDevelopmentStorage=true")
+    @patch("azure.storage.blob.BlobServiceClient")
+    def test_successful_upload(self, mock_blob_class: MagicMock) -> None:
+        from worker.store import upload_blob
+
+        mock_service = MagicMock()
+        mock_container = MagicMock()
+        mock_blob_class.from_connection_string.return_value = mock_service
+        mock_service.get_container_client.return_value = mock_container
+
+        result = upload_blob("doc-1", "test.pdf", b"pdf-content", doc_type="invoice")
+
+        assert result == "doc-1/test.pdf"
+        mock_container.upload_blob.assert_called_once_with(
+            "doc-1/test.pdf", b"pdf-content", overwrite=True
+        )

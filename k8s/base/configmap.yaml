@@ -12,3 +12,4 @@ data:
   STREAM_EXTRACTED: "extracted"
   STREAM_CLASSIFIED: "classified"
   PYTHONPATH: "/app/src"
+  BLOB_CONTAINER: "documents"

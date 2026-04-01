@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS documents (
 
     -- Document metadata
     filename        TEXT NOT NULL,
+    doc_type        TEXT NOT NULL DEFAULT 'unknown',  -- loan_application / valuation_report / kyc_report / contract / invoice
     text            TEXT NOT NULL,
     page_count      INTEGER NOT NULL,
     word_count      INTEGER NOT NULL,
@@ -32,12 +33,18 @@ CREATE TABLE IF NOT EXISTS documents (
     -- Embedding for pgvector semantic search (384 dims = all-MiniLM-L6-v2)
     embedding       vector(384),
 
+    -- Blob storage
+    blob_url        TEXT,                             -- Azure Blob Storage path (null if blob not configured)
+
     -- Timestamps
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Index for filtering by classification level
 CREATE INDEX IF NOT EXISTS idx_documents_classification ON documents (classification);
+
+-- Index for filtering by document type
+CREATE INDEX IF NOT EXISTS idx_documents_doc_type ON documents (doc_type);
 
 -- Index for filtering by environmental impact
 CREATE INDEX IF NOT EXISTS idx_documents_environmental ON documents (environmental_impact);
