@@ -139,7 +139,10 @@ def infer_doc_type(filename: str) -> str:
 
 
 def upload_blob(
-    doc_id: str, filename: str, pdf_bytes: bytes, doc_type: str = "unknown",
+    doc_id: str,
+    filename: str,
+    pdf_bytes: bytes,
+    doc_type: str = "unknown",
 ) -> str | None:
     """Upload a PDF to Azure Blob Storage.
 
