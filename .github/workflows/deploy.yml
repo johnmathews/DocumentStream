@@ -1,11 +1,10 @@
 name: Deploy to AKS
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
     branches: [main]
-    paths:
-      - "src/**"
-      - "k8s/**"
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -13,11 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yml
-
-  build-and-deploy:
-    needs: ci
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: production
 
@@ -28,22 +24,6 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Build and push gateway image to ACR
-        run: |
-          az acr build \
-            -r acrdocumentstream \
-            -t gateway:${{ github.sha }} \
-            -t gateway:latest \
-            -f src/gateway/Dockerfile .
-
-      - name: Build and push worker image to ACR
-        run: |
-          az acr build \
-            -r acrdocumentstream \
-            -t worker:${{ github.sha }} \
-            -t worker:latest \
-            -f src/worker/Dockerfile .
 
       - name: Set AKS context
         run: |
@@ -57,20 +37,21 @@ jobs:
 
       - name: Update deployment image tags
         run: |
+          SHA=${{ github.event.workflow_run.head_sha || github.sha }}
           kubectl set image deployment/gateway \
-            gateway=acrdocumentstream.azurecr.io/gateway:${{ github.sha }} \
+            gateway=acrdocumentstream.azurecr.io/gateway:${SHA} \
             -n documentstream
 
           kubectl set image deployment/extract-worker \
-            extract-worker=acrdocumentstream.azurecr.io/worker:${{ github.sha }} \
+            extract-worker=acrdocumentstream.azurecr.io/worker:${SHA} \
             -n documentstream
 
           kubectl set image deployment/classify-worker \
-            classify-worker=acrdocumentstream.azurecr.io/worker:${{ github.sha }} \
+            classify-worker=acrdocumentstream.azurecr.io/worker:${SHA} \
             -n documentstream
 
           kubectl set image deployment/store-worker \
-            store-worker=acrdocumentstream.azurecr.io/worker:${{ github.sha }} \
+            store-worker=acrdocumentstream.azurecr.io/worker:${SHA} \
             -n documentstream
 
       - name: Wait for rollouts

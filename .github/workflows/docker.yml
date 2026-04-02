@@ -27,6 +27,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to ACR
+        if: secrets.AZURE_CREDENTIALS != ''
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR registry
+        if: secrets.AZURE_CREDENTIALS != ''
+        run: az acr login -n acrdocumentstream
+
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -35,3 +45,13 @@ jobs:
           tags: |
             ghcr.io/johnmathews/documentstream-${{ matrix.image }}:latest
             ghcr.io/johnmathews/documentstream-${{ matrix.image }}:${{ github.sha }}
+
+      - name: Push to ACR
+        if: secrets.AZURE_CREDENTIALS != ''
+        run: |
+          docker tag ghcr.io/johnmathews/documentstream-${{ matrix.image }}:${{ github.sha }} \
+            acrdocumentstream.azurecr.io/${{ matrix.image }}:${{ github.sha }}
+          docker tag ghcr.io/johnmathews/documentstream-${{ matrix.image }}:${{ github.sha }} \
+            acrdocumentstream.azurecr.io/${{ matrix.image }}:latest
+          docker push acrdocumentstream.azurecr.io/${{ matrix.image }}:${{ github.sha }}
+          docker push acrdocumentstream.azurecr.io/${{ matrix.image }}:latest
