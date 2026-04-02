@@ -11,7 +11,7 @@ loan documents.
 - **PDF generation:** fpdf2 + Faker (nl_NL locale)
 - **Text extraction:** PyMuPDF (fitz)
 - **Rule-based classification:** Weighted keyword scoring (privacy level)
-- **Semantic classification:** sentence-transformers + ONNX Runtime + anchor embeddings (environmental impact, industries)
+- **Semantic classification:** ONNX Runtime + HuggingFace tokenizer + anchor embeddings (environmental impact, industries)
 - **Testing:** pytest + coverage
 - **Linting:** ruff
 - **Deps:** uv

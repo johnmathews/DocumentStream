@@ -1,4 +1,4 @@
-"""Semantic document classifier using sentence-transformers embeddings.
+"""Semantic document classifier using ONNX Runtime embeddings.
 
 Classifies documents across multiple dimensions using zero-shot classification
 with descriptive anchor texts. Unlike the rule-based classifier, this approach
@@ -22,35 +22,115 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import numpy as np
+from huggingface_hub import hf_hub_download
 from numpy.typing import NDArray
-from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer
+
+if TYPE_CHECKING:
+    import onnxruntime as ort
 
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
 
-MODEL_NAME = "all-MiniLM-L6-v2"  # 384 dimensions, fast, good quality
+MODEL_REPO = "sentence-transformers/all-MiniLM-L6-v2"
+ONNX_FILENAME = "onnx/model.onnx"
+MAX_SEQ_LENGTH = 256  # from sentence_bert_config.json
 EMBEDDING_DIM = 384
 
 
 @lru_cache(maxsize=1)
-def _get_model() -> SentenceTransformer:
-    """Load the embedding model (cached, loaded once)."""
-    return SentenceTransformer(MODEL_NAME, backend="onnx")
+def _get_tokenizer() -> AutoTokenizer:
+    """Load the tokenizer (cached, loaded once)."""
+    return AutoTokenizer.from_pretrained(MODEL_REPO)
+
+
+@lru_cache(maxsize=1)
+def _get_session() -> ort.InferenceSession:
+    """Load the ONNX Runtime inference session (cached, loaded once).
+
+    Downloads the ONNX model from HuggingFace Hub on first use.
+    Subsequent calls use the huggingface_hub cache.
+    """
+    import onnxruntime as ort
+
+    model_path = hf_hub_download(repo_id=MODEL_REPO, filename=ONNX_FILENAME)
+    return ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+
+
+def _mean_pooling(
+    token_embeddings: NDArray[np.float32],
+    attention_mask: NDArray[np.int64],
+) -> NDArray[np.float32]:
+    """Apply mean pooling: average token embeddings weighted by attention mask.
+
+    Args:
+        token_embeddings: shape (batch, seq_len, hidden_dim)
+        attention_mask: shape (batch, seq_len)
+
+    Returns:
+        Pooled embeddings of shape (batch, hidden_dim)
+    """
+    mask_expanded = attention_mask[:, :, np.newaxis].astype(np.float32)
+    sum_embeddings = np.sum(token_embeddings * mask_expanded, axis=1)
+    sum_mask = np.clip(mask_expanded.sum(axis=1), a_min=1e-9, a_max=None)
+    return sum_embeddings / sum_mask
+
+
+def _l2_normalize(x: NDArray[np.float32]) -> NDArray[np.float32]:
+    """L2-normalize each row vector."""
+    norms = np.linalg.norm(x, axis=1, keepdims=True)
+    norms = np.clip(norms, a_min=1e-9, a_max=None)
+    return x / norms
+
+
+def _encode(texts: list[str]) -> NDArray[np.float32]:
+    """Tokenize, run ONNX inference, pool, and normalize.
+
+    Returns L2-normalized embeddings of shape (len(texts), 384).
+    """
+    tokenizer = _get_tokenizer()
+    session = _get_session()
+
+    encoded = tokenizer(
+        texts,
+        padding=True,
+        truncation=True,
+        max_length=MAX_SEQ_LENGTH,
+        return_tensors="np",
+    )
+
+    input_ids = encoded["input_ids"]
+    attention_mask = encoded["attention_mask"]
+
+    # token_type_ids may or may not be required by the ONNX model
+    ort_inputs: dict[str, NDArray] = {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+    }
+    # Add token_type_ids if the model expects it
+    model_input_names = {inp.name for inp in session.get_inputs()}
+    if "token_type_ids" in model_input_names and "token_type_ids" in encoded:
+        ort_inputs["token_type_ids"] = encoded["token_type_ids"]
+
+    outputs = session.run(None, ort_inputs)
+    token_embeddings = outputs[0]  # (batch, seq_len, hidden_dim)
+
+    pooled = _mean_pooling(token_embeddings, attention_mask)
+    return _l2_normalize(pooled)
 
 
 def embed_text(text: str) -> NDArray[np.float32]:
     """Embed a text string into a vector."""
-    model = _get_model()
-    return model.encode(text, normalize_embeddings=True)
+    return _encode([text])[0]
 
 
 def embed_texts(texts: list[str]) -> NDArray[np.float32]:
     """Embed multiple texts into vectors (batched for efficiency)."""
-    model = _get_model()
-    return model.encode(texts, normalize_embeddings=True)
+    return _encode(texts)
 
 
 # ---------------------------------------------------------------------------

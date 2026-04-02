@@ -7,7 +7,7 @@ For each message:
     3. Publish all results to the 'classified' stream
     4. Acknowledge the original message
 
-This worker loads the sentence-transformers model on startup (~80MB),
+This worker loads the ONNX embedding model on startup (~90MB),
 so it uses more memory than other workers (~300-400MB total).
 """
 
