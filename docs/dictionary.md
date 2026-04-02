@@ -398,18 +398,15 @@ words. For example, "the site was a textile dyeing factory" and "ground contamin
 industrial chemical processing" would have similar embeddings because they're about the same
 concept — industrial pollution.
 
-We use the `all-MiniLM-L6-v2` model (sentence-transformers) which produces 384-dimensional
-vectors. "384-dimensional" means each text becomes a list of 384 numbers.
+We use the `all-MiniLM-L6-v2` model which produces 384-dimensional vectors.
+"384-dimensional" means each text becomes a list of 384 numbers.
 
 ### ONNX Runtime
-An optimized inference engine for running machine learning models. Instead of using
-full PyTorch (~5GB) to run the embedding model, we export the model to ONNX format
-and run it with ONNX Runtime (~50MB). Same model, same results, much smaller footprint.
-
-sentence-transformers supports this with a single parameter:
-```python
-SentenceTransformer("all-MiniLM-L6-v2", backend="onnx")
-```
+An optimized inference engine for running machine learning models. We load the
+ONNX model directly from HuggingFace Hub and run inference with ONNX Runtime +
+a HuggingFace tokenizer — no PyTorch dependency at all. This keeps the worker
+container image at ~190MB instead of ~3GB. Same model, same results, much smaller
+footprint.
 
 This is important for K8s because smaller images mean faster pod startup (KEDA can
 scale workers up more quickly) and lower memory usage per pod.

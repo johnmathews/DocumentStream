@@ -73,8 +73,8 @@ approach is appropriate — a key interview talking point.
    > below sea level in a polder, near river flood plains, or in a zone
    > requiring active water management infrastructure."
 
-2. **Embed the anchors** at startup using sentence-transformers (all-MiniLM-L6-v2,
-   384 dimensions). Each anchor becomes a 384-number vector that captures its meaning.
+2. **Embed the anchors** at startup using all-MiniLM-L6-v2 via ONNX Runtime (384
+   dimensions). Each anchor becomes a 384-number vector that captures its meaning.
 
 3. **Embed each document** — the full extracted text becomes a vector.
 
@@ -184,11 +184,11 @@ We use pgvector (PostgreSQL extension) for the demo. For production at a bank,
 
 ### Embedding model
 
-We use `all-MiniLM-L6-v2` (sentence-transformers, 384 dimensions) with **ONNX Runtime**
-as the inference backend instead of PyTorch. This reduces the runtime from ~5GB (full
-PyTorch) to ~50MB (ONNX Runtime), which means faster container image pulls, faster pod
-startup when KEDA scales workers, and lower memory per pod. Free, runs locally, no API
-dependency. For production:
+We use `all-MiniLM-L6-v2` (384 dimensions) with **ONNX Runtime** for inference,
+loaded directly via `huggingface-hub` and tokenized with `transformers`. No PyTorch
+dependency — the worker image is ~190MB instead of ~3GB. This means faster container
+image pulls, faster pod startup when KEDA scales workers, and lower memory per pod.
+Free, runs locally, no API dependency. For production:
 
 **Azure OpenAI `text-embedding-3-small`** would be preferred:
 - Higher quality embeddings (1536 dimensions)

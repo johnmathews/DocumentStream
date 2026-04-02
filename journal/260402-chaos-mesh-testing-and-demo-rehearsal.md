@@ -71,18 +71,29 @@ Applied via `helm upgrade --install`. Chaos daemons restarted and all experiment
   names across all docs, updated implementation plan progress.
 - **CI fix:** `src/worker/store.py` had a ruff format issue (function args on one line).
 
-## Files changed
+## CI/CD pipeline
 
-- `k8s/chaos/pod-kill.yaml` — changed mode from `fixed`/`value: "2"` to `one`
-- `infra/helm-install.sh` — added containerd runtime settings for Chaos Mesh
-- `infra/setup.sh` — corrected storage account name
-- `docs/chaos-experiments.md` — added containerd prerequisite note and verified results
-- `docs/demo-guide.md` — updated rolling update section, removed stale Postgres checklist item
-- `docs/implementation-plan.md` — marked chaos, rolling update, demo rehearsal as DONE
-- `locust/locustfile.py` — reweighted for async pipeline, removed sync generate task
-- `src/worker/store.py` — simplified blob path (filename only, no UUID prefix)
-- `tests/test_store.py` — updated blob path assertions
-- `README.md` — corrected test count (51 → 92)
-- `CLAUDE.md` — removed chaos mesh and demo rehearsal from "Not yet done"
-- `.engineering-team/architecture-plan.md` — updated demo script and Azure resource names
-- `.github/workflows/deploy.yml` — corrected AKS cluster name and resource group
+- **docker.yml:** Now builds images once and pushes to both ghcr.io and ACR. ACR push
+  is gated on `ACR_LOGIN_SERVER` variable + `ACR_CLIENT_ID`/`ACR_CLIENT_SECRET` secrets.
+- **deploy.yml:** Triggers via `workflow_run` after docker.yml completes (no duplicate builds).
+  Uses `azure/login@v2` with service principal creds JSON for AKS access.
+- **Secrets configured:** `ACR_CLIENT_ID`, `ACR_CLIENT_SECRET`, `AZURE_TENANT_ID`,
+  `AZURE_SUBSCRIPTION_ID`, `AZURE_CREDENTIALS`, plus `ACR_LOGIN_SERVER` variable.
+- **Full pipeline working:** push → CI (lint+test) + Docker (build+push to ghcr.io+ACR) → Deploy (AKS).
+
+## Remove torch: direct ONNX Runtime inference
+
+Replaced `sentence-transformers` (which requires torch ~2GB) with direct ONNX Runtime
+inference. The worker image dropped from **~3GB to ~190MB** (93% reduction).
+
+- `src/worker/semantic.py` — replaced `SentenceTransformer.encode()` with manual
+  tokenization (HuggingFace `AutoTokenizer`) + ONNX inference + numpy mean pooling
+  + L2 normalization. Same model (all-MiniLM-L6-v2), same 384-dim output.
+- `pyproject.toml` — replaced `sentence-transformers[onnx]` with `onnxruntime`,
+  `transformers`, `huggingface-hub`. Removed 31 packages from lock file.
+- ONNX model downloaded from HuggingFace Hub on first use via `hf_hub_download`.
+
+## Redis OOM fix
+
+Redis was OOMKilled with 128Mi memory limit after accumulating a large backlog from
+Locust testing. Increased to 512Mi limit / 256Mi request via kubectl patch.

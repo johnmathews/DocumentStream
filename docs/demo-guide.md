@@ -215,13 +215,14 @@ for RAG workloads on Azure.
 **When to mention:** When asked about the embedding model or container optimization.
 
 **What to say:**
-> "I used sentence-transformers locally — specifically all-MiniLM-L6-v2 — with ONNX
-> Runtime as the inference backend instead of PyTorch. ONNX Runtime is about 50MB
-> versus 5GB for full PyTorch, which makes a big difference in a K8s environment —
-> faster image pulls, faster pod startup when KEDA scales up, and lower memory per
-> worker. For production, I'd use Azure OpenAI's text-embedding-3-small model. The
-> embeddings are higher quality, and the data stays within Azure's boundary —
-> important for a bank's compliance requirements."
+> "I run all-MiniLM-L6-v2 locally with ONNX Runtime — no PyTorch at all. The
+> worker image is about 190MB instead of 3GB, which makes a big difference in a
+> K8s environment — faster image pulls, faster pod startup when KEDA scales up,
+> and lower memory per worker. I load the ONNX model from HuggingFace Hub and
+> tokenize with the HuggingFace tokenizer, then run inference directly through
+> ONNX Runtime. For production, I'd use Azure OpenAI's text-embedding-3-small
+> model. The embeddings are higher quality, and the data stays within Azure's
+> boundary — important for a bank's compliance requirements."
 
 ### Chaos Engineering
 **When to mention:** When they seem impressed by the self-healing demo.

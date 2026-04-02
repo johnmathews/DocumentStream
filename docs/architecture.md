@@ -154,7 +154,7 @@ storing → completed).
 | Aspect | Detail |
 |---|---|
 | Rule-based | Weighted keyword scoring → Privacy level (Public/Confidential/Secret) |
-| Semantic | sentence-transformers + ONNX Runtime embedding → Environmental impact, Industry sectors, Privacy |
+| Semantic | ONNX Runtime + HuggingFace tokenizer embedding → Environmental impact, Industry sectors, Privacy |
 | Input | Redis stream `extracted` |
 | Output | Redis stream `classified` |
 | Model | all-MiniLM-L6-v2 (384 dimensions, ~100ms per document, ONNX backend) |
@@ -291,8 +291,7 @@ gitignored).
    language paragraphs describing each category. The embedding model captures
    meaning, enabling detection of concepts expressed in different words.
 
-6. **Local sentence-transformers with ONNX Runtime over Azure OpenAI.** No API
-   dependency, free, runs anywhere. ONNX Runtime replaces PyTorch for inference,
-   reducing container image size and memory usage (~50MB runtime vs ~5GB for
-   full PyTorch). For production, Azure OpenAI text-embedding-3-small would
+6. **Local ONNX Runtime inference over Azure OpenAI.** No API dependency, free,
+   runs anywhere. Direct ONNX Runtime inference (no PyTorch) keeps the worker
+   image at ~190MB. For production, Azure OpenAI text-embedding-3-small would
    provide higher quality embeddings within Azure's data boundary.
