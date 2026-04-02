@@ -147,7 +147,7 @@ def upload_blob(
     """Upload a PDF to Azure Blob Storage.
 
     Args:
-        doc_id: Document ID (used as blob prefix).
+        doc_id: Document ID (for logging).
         filename: Original filename.
         pdf_bytes: Raw PDF content.
         doc_type: Document type label for metrics.
@@ -166,7 +166,7 @@ def upload_blob(
         container = blob_service.get_container_client(BLOB_CONTAINER)
         with contextlib.suppress(Exception):
             container.create_container()
-        blob_name = f"{doc_id}/{filename}"
+        blob_name = filename
         container.upload_blob(blob_name, pdf_bytes, overwrite=True)
 
         blob_uploads_total.labels(doc_type=doc_type).inc()

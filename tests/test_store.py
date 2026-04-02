@@ -177,7 +177,7 @@ class TestUploadBlob:
 
         result = upload_blob("doc-1", "test.pdf", b"pdf-content", doc_type="invoice")
 
-        assert result == "doc-1/test.pdf"
+        assert result == "test.pdf"
         mock_container.upload_blob.assert_called_once_with(
-            "doc-1/test.pdf", b"pdf-content", overwrite=True
+            "test.pdf", b"pdf-content", overwrite=True
         )

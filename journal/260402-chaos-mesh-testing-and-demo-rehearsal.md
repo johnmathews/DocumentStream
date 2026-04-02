@@ -55,10 +55,34 @@ Applied via `helm upgrade --install`. Chaos daemons restarted and all experiment
 4. **Node capacity:** Only 2 of 3 configured nodes are running. Some KEDA-scaled
    pods couldn't schedule. Not a blocker for the demo narrative but worth noting.
 
+## Additional fixes
+
+- **Blob storage paths:** Removed unnecessary UUID prefix from blob names. Documents
+  are now stored as `CRE-123456/contract.pdf` instead of `{uuid}/CRE-123456/contract.pdf`.
+  The loan ID grouping in the filename is sufficient.
+- **Locust load test:** Reweighted tasks so 80% of requests use the async `/api/documents`
+  endpoint (which goes through Redis and triggers KEDA). Removed the sync `/api/generate`
+  task which bypassed Redis entirely. Reduced wait time from 1-3s to 0.5-1.5s.
+- **Chaos Mesh dashboard RBAC:** Created a `chaos-admin` service account with cluster-admin
+  binding to fix the dashboard permission error. Generated a long-lived token for demo use.
+- **Demo checklist:** Removed the PostgreSQL Flexible Server start step — Postgres runs
+  in-cluster as a pod, starts automatically with AKS.
+- **Documentation audit:** Fixed test count in README (51 → 92), corrected Azure resource
+  names across all docs, updated implementation plan progress.
+- **CI fix:** `src/worker/store.py` had a ruff format issue (function args on one line).
+
 ## Files changed
 
 - `k8s/chaos/pod-kill.yaml` — changed mode from `fixed`/`value: "2"` to `one`
 - `infra/helm-install.sh` — added containerd runtime settings for Chaos Mesh
+- `infra/setup.sh` — corrected storage account name
 - `docs/chaos-experiments.md` — added containerd prerequisite note and verified results
-- `docs/demo-guide.md` — updated rolling update section to use gateway instead of workers
+- `docs/demo-guide.md` — updated rolling update section, removed stale Postgres checklist item
+- `docs/implementation-plan.md` — marked chaos, rolling update, demo rehearsal as DONE
+- `locust/locustfile.py` — reweighted for async pipeline, removed sync generate task
+- `src/worker/store.py` — simplified blob path (filename only, no UUID prefix)
+- `tests/test_store.py` — updated blob path assertions
+- `README.md` — corrected test count (51 → 92)
 - `CLAUDE.md` — removed chaos mesh and demo rehearsal from "Not yet done"
+- `.engineering-team/architecture-plan.md` — updated demo script and Azure resource names
+- `.github/workflows/deploy.yml` — corrected AKS cluster name and resource group

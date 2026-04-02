@@ -10,8 +10,7 @@ commands, timing, talking points, and things to name-drop with context on **why*
 Before the interview:
 
 - [ ] AKS cluster is running (`az aks start -n DocumentStreamManagedCluster -g documentstream`)
-- [ ] PostgreSQL is running (`az postgres flexible-server start -n documentstream-pg -g documentstream`)
-- [ ] All pods are healthy (`kubectl get pods -n documentstream`)
+- [ ] All pods are healthy (`kubectl get pods -n documentstream`) — PostgreSQL runs in-cluster, no separate start needed
 - [ ] Grafana is accessible and dashboard is loaded
 - [ ] Chaos Mesh dashboard is accessible
 - [ ] Locust is ready (either in-cluster or local)

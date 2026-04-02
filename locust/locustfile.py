@@ -33,7 +33,7 @@ def _generate_pdf() -> bytes:
 class DocumentStreamUser(HttpUser):
     """Simulates a user interacting with the DocumentStream gateway."""
 
-    wait_time = between(1, 3)
+    wait_time = between(0.5, 1.5)
 
     # Generate the PDF payload once for the entire class so every upload
     # reuses the same bytes instead of rebuilding a PDF per request.
@@ -43,9 +43,13 @@ class DocumentStreamUser(HttpUser):
     # Tasks                                                               #
     # ------------------------------------------------------------------ #
 
-    @task(3)
+    @task(8)
     def upload_pdf(self) -> None:
-        """Upload a small PDF via multipart form — the main pipeline driver."""
+        """Upload a small PDF via multipart form — the main pipeline driver.
+
+        This is the primary task because it pushes documents through the Redis
+        async pipeline, which is what KEDA monitors for autoscaling.
+        """
         self.client.post(
             "/api/documents",
             files={"file": ("loadtest.pdf", io.BytesIO(self._pdf_bytes), "application/pdf")},
@@ -53,15 +57,6 @@ class DocumentStreamUser(HttpUser):
         )
 
     @task(1)
-    def generate_scenario(self) -> None:
-        """Generate a full loan scenario (5 documents) via the API."""
-        self.client.post(
-            "/api/generate",
-            json={"count": 1},
-            name="/api/generate",
-        )
-
-    @task(5)
     def list_documents(self) -> None:
         """List processed documents — lightweight read, simulates monitoring."""
         self.client.get(
@@ -69,7 +64,7 @@ class DocumentStreamUser(HttpUser):
             name="/api/documents [list]",
         )
 
-    @task(2)
+    @task(1)
     def health_check(self) -> None:
         """Hit the health endpoint — simulates K8s probes and monitoring."""
         self.client.get(
