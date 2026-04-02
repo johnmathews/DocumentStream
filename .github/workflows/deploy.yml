@@ -48,8 +48,8 @@ jobs:
       - name: Set AKS context
         run: |
           az aks get-credentials \
-            -n documentstream-aks \
-            -g documentstream-rg \
+            -n DocumentStreamManagedCluster \
+            -g documentstream \
             --overwrite-existing
 
       - name: Apply K8s manifests

@@ -178,17 +178,17 @@ This is what the live demo looks like. Every architectural decision below serves
 - "KEDA monitors Redis queue depth. When documents pile up, it adds workers automatically"
 
 ### Minute 3-5: "Watch it heal"
-- Open Chaos Mesh dashboard, create a PodChaos experiment: kill 2 classify workers
-- Switch to Grafana: watch pods die and instantly restart
+- Apply PodChaos experiment: `kubectl apply -f k8s/chaos/pod-kill.yaml` (kills 1 classify worker)
+- Switch to Grafana: watch pod die and instantly restart (~8 seconds to Running+Ready)
 - Show brief latency spike, then recovery
-- "Kubernetes detected the failed pods and restarted them in seconds. No documents were lost — they stayed in the queue"
+- "Kubernetes detected the failed pod and restarted it in seconds. No documents were lost — they stayed in the queue"
 
 ### Minute 5-7: "Watch it handle a bad deployment"
-- Deploy a "buggy" version (returns 500 errors) using `kubectl set image`
-- Show rolling update: old pods still serving while new pods start failing readiness probes
-- K8s stops the rollout automatically (maxUnavailable protects the system)
-- Run `kubectl rollout undo` — instant rollback
-- "The readiness probe caught the bug. K8s stopped the rollout before it affected users. One command to rollback"
+- Deploy a "buggy" gateway version: `kubectl set image deployment/gateway gateway=acrdocumentstream.azurecr.io/gateway:buggy -n documentstream`
+- Show rolling update: old pods still serving while new pod fails to start (ImagePullBackOff)
+- Verify system still serves traffic: `curl http://51.138.91.82/health` returns 200
+- Run `kubectl rollout undo deployment/gateway -n documentstream` — instant rollback
+- "The rolling update strategy kept the old pods running. One command to rollback"
 
 ### Minute 7-8: "The CI/CD pipeline"
 - Show the GitHub Actions workflow (on screen or paper)
@@ -284,8 +284,8 @@ k8s/
 | # | Task | Details |
 |---|---|---|
 | 1.1 | Azure account setup | Create subscription, install `az` CLI, authenticate |
-| 1.2 | Create resource group | `az group create -n documentstream-rg -l westeurope` |
-| 1.3 | Create ACR | `az acr create -n documentstreamacr -g documentstream-rg --sku Basic` |
+| 1.2 | Create resource group | `az group create -n documentstream -l westeurope` |
+| 1.3 | Create ACR | `az acr create -n documentstreamacr -g documentstream --sku Basic` |
 | 1.4 | Create AKS cluster | 3x B2ms nodes, attach ACR, enable monitoring |
 | 1.5 | Install Helm charts | kube-prometheus-stack, Redis, KEDA, Chaos Mesh, ingress-nginx |
 | 1.6 | Verify cluster | `kubectl get nodes`, access Grafana, access Chaos Mesh dashboard |
@@ -410,12 +410,12 @@ This project demonstrates the following Kubernetes concepts, mapped to interview
 
 ```bash
 # Variables
-RG=documentstream-rg
+RG=documentstream
 LOCATION=westeurope
-CLUSTER=documentstream-aks
+CLUSTER=DocumentStreamManagedCluster
 ACR=documentstreamacr
 PG_SERVER=documentstream-pg
-STORAGE=documentstreamstorage
+STORAGE=documentstream
 
 # Resource Group
 az group create -n $RG -l $LOCATION

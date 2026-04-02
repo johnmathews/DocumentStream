@@ -105,7 +105,7 @@ src/
   gateway/          FastAPI API + web UI + Dockerfile
   worker/           Extract, classify, and semantic modules
   generator/        PDF document generator (5 templates, CLI)
-tests/              51 pytest tests
+tests/              92 pytest tests
 docs/               Architecture, classification, demo guide, dictionary
 demo_samples/       One committed loan scenario (5 PDFs)
 k8s/                Kubernetes manifests (base, scaling, chaos)

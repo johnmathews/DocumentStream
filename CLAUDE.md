@@ -35,9 +35,7 @@ loan documents.
 - **ServiceMonitor:** Prometheus scrape config for kube-prometheus-stack
 
 ### Not yet done
-- Apply Chaos Mesh experiments on live cluster
 - CI/CD deploy workflow needs AZURE_CREDENTIALS secret
-- Demo rehearsal
 
 ## Project Structure
 - `src/gateway/` — FastAPI API + web UI (dual-mode: sync or async via Redis)

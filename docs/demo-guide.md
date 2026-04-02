@@ -9,8 +9,8 @@ commands, timing, talking points, and things to name-drop with context on **why*
 
 Before the interview:
 
-- [ ] AKS cluster is running (`az aks start -n documentstream-aks -g documentstream-rg`)
-- [ ] PostgreSQL is running (`az postgres flexible-server start -n documentstream-pg -g documentstream-rg`)
+- [ ] AKS cluster is running (`az aks start -n DocumentStreamManagedCluster -g documentstream`)
+- [ ] PostgreSQL is running (`az postgres flexible-server start -n documentstream-pg -g documentstream`)
 - [ ] All pods are healthy (`kubectl get pods -n documentstream`)
 - [ ] Grafana is accessible and dashboard is loaded
 - [ ] Chaos Mesh dashboard is accessible
@@ -104,15 +104,16 @@ Before the interview:
 
 ### Minute 4-6: "Watch it heal"
 
-**Show:** Chaos Mesh dashboard — create a PodChaos experiment
+**Run:** `kubectl apply -f k8s/chaos/pod-kill.yaml`
 
-> "I'm going to kill 2 classify workers. This simulates a node failure or a process crash."
+> "I'm going to kill a classify worker. This simulates a node failure or a process crash."
 
-**Show:** Grafana — pods drop, then come back
+**Show:** `kubectl get pods -n documentstream -l app=classify-worker` — pod dies and restarts
+in ~8 seconds
 
-> "Kubernetes detected the failed pods within seconds and created replacements. The
-> documents those workers were processing? They stayed unacknowledged in the Redis
-> stream. When the new workers started, they picked up the unfinished messages.
+> "Kubernetes detected the failed pod within seconds and created a replacement. The
+> document that worker was processing? It stayed unacknowledged in the Redis
+> stream. When the new worker started, it picked up the unfinished message.
 > Zero data loss."
 
 **Explain the Redis Streams guarantee:**
@@ -126,20 +127,26 @@ Before the interview:
 
 ### Minute 6-8: "Watch it handle a bad deployment"
 
-**Run:** `kubectl set image deployment/classify-worker classify-worker=documentstreamacr.azurecr.io/worker:buggy`
+**Run:** `kubectl set image deployment/gateway gateway=acrdocumentstream.azurecr.io/gateway:buggy -n documentstream`
 
-> "I just deployed a 'buggy' version of the classify worker — it returns errors on
-> every request. Watch the rolling update."
+> "I just deployed a 'buggy' version of the gateway — pointing to an image tag that
+> doesn't exist. Watch the rolling update."
 
-**Show:** Grafana — new pods start failing readiness probes
+**Show:** `kubectl get pods -n documentstream -l app=gateway` — new pod is Pending/ImagePullBackOff,
+old pods still Running
 
-> "K8s starts the new pods, but they fail their readiness probes. K8s notices and
-> stops the rollout — the old pods keep running. The system is still serving traffic.
-> No downtime."
+> "K8s starts the new pod, but it can't pull the image. The rolling update strategy
+> keeps the old pods running — the system is still serving traffic. No downtime."
 
-**Run:** `kubectl rollout undo deployment/classify-worker`
+**Verify:** `curl http://51.138.91.82/health` — still returns 200
+
+**Run:** `kubectl rollout undo deployment/gateway -n documentstream`
 
 > "One command to rollback. The previous version is restored in seconds."
+
+**Note:** The gateway has readiness probes configured, so K8s knows not to route
+traffic to unhealthy pods. The workers don't have HTTP endpoints (they're Redis
+consumers), so the gateway is the best target for this demo.
 
 ---
 

@@ -82,9 +82,14 @@ install_prometheus() {
 
 install_chaos_mesh() {
     echo "==> Installing Chaos Mesh..."
+    # AKS uses containerd (not Docker). Chaos Mesh defaults to docker runtime,
+    # which causes "expected docker:// but got containerd://" errors on all
+    # experiment types. Must set runtime + socket path explicitly.
     helm upgrade --install chaos-mesh chaos-mesh/chaos-mesh \
         --namespace chaos-mesh \
         --create-namespace \
+        --set chaosDaemon.runtime=containerd \
+        --set chaosDaemon.socketPath=/run/containerd/containerd.sock \
         --set controllerManager.resources.requests.cpu=25m \
         --set controllerManager.resources.requests.memory=64Mi \
         --set dashboard.resources.requests.cpu=25m \

@@ -26,7 +26,7 @@ AKS_NAME="DocumentStreamManagedCluster"
 PG_NAME="documentstream-pg"
 PG_ADMIN="documentstream"
 PG_PASSWORD="${PG_PASSWORD:?Set PG_PASSWORD environment variable before running this script}"
-STORAGE_NAME="documentstreamstorage"
+STORAGE_NAME="documentstream"
 BLOB_CONTAINER="documents"
 
 echo "==> Creating resource group..."

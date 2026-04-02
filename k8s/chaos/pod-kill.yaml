@@ -19,13 +19,12 @@ metadata:
   namespace: documentstream
   annotations:
     chaos-mesh.org/description: >-
-      Kill 2 classify-worker pods to verify K8s self-healing and Redis
-      at-least-once message delivery. Pods should restart within seconds
+      Kill a classify-worker pod to verify K8s self-healing and Redis
+      at-least-once message delivery. Pod should restart within seconds
       and resume processing without data loss.
 spec:
   action: pod-kill
-  mode: fixed
-  value: "2"
+  mode: one
   selector:
     namespaces:
       - documentstream

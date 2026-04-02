@@ -5,7 +5,16 @@ Chaos Mesh experiments for demonstrating Kubernetes resilience and self-healing.
 
 ## Prerequisites
 
-- Chaos Mesh installed in the cluster (`helm install chaos-mesh` — already done)
+- Chaos Mesh installed with containerd runtime support (AKS uses containerd, not Docker):
+  ```bash
+  helm upgrade --install chaos-mesh chaos-mesh/chaos-mesh \
+    --namespace chaos-mesh \
+    --set chaosDaemon.runtime=containerd \
+    --set chaosDaemon.socketPath=/run/containerd/containerd.sock
+  ```
+  Without the containerd settings, StressChaos and NetworkChaos fail with
+  `expected docker:// but got container` errors. The `infra/helm-install.sh` script
+  already includes these settings.
 - Pipeline running with documents flowing through Redis Streams
 - Grafana dashboard open to observe the effects
 
@@ -34,6 +43,9 @@ kubectl delete podchaos pod-kill-classify-worker
 - Pod restarts counter increments (visible in Grafana "Pod Restarts" panel)
 - Pipeline continues processing after the new pod is ready
 
+**Verified result (2026-04-02):** Pod killed and replacement Running+Ready in ~8 seconds.
+Pipeline processed documents immediately after recovery. Zero data loss confirmed.
+
 ## Experiment 2: Network Delay (Resilience)
 
 Injects 500ms latency (with 100ms jitter) on store-worker pods for 2 minutes. Simulates degraded connectivity to
@@ -56,6 +68,10 @@ kubectl delete networkchaos network-delay-store-worker
 - Redis queue depth increases (store-worker processing is slower)
 - Grafana network I/O panel shows the latency effect
 - After expiry, throughput returns to normal
+
+**Verified result (2026-04-02):** Pipeline slowed but continued processing. Store-worker
+lag reached 8 messages (normally 0) during the experiment. All messages processed after
+delay cleared.
 
 ## Experiment 3: CPU Stress (KEDA Autoscaling)
 
@@ -86,6 +102,16 @@ kubectl delete stresschaos cpu-stress-classify-worker
 - KEDA detects the lag and scales up additional classify-worker pods
 - New pods process the backlog, queue depth drops
 - After stress ends + 60s cooldown, KEDA scales back down to 1
+
+**Verified result (2026-04-02):** CPU stress injected successfully (required containerd
+runtime fix — see Prerequisites). With 80 concurrent PDF uploads, classify lag reached 18
+messages. KEDA scaled classify-workers from 1 to 4 pods within 15 seconds. Additional pods
+were Pending due to node capacity (2 nodes) — in production, AKS Cluster Autoscaler would
+add nodes.
+
+**Note:** The `/api/generate` endpoint processes documents synchronously (bypasses Redis).
+To test KEDA scaling, use the `/api/documents` upload endpoint which queues through Redis,
+or use Locust.
 
 ## Recommended Demo Order
 
